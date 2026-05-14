@@ -46,10 +46,14 @@ public static class LocaleService
     public static string T(string key, params object[] args)
     {
         try { return string.Format(T(key), args); }
-        catch (FormatException) { return T(key) + " " + string.Join(" ", args); }
+        catch (FormatException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LocaleService format error for key '{key}': {ex.Message}");
+            return T(key) + " " + string.Join(" ", args);
+        }
     }
 
-    public static readonly Dictionary<string, Dictionary<string, string>> Translations = new()
+    private static readonly Dictionary<string, Dictionary<string, string>> Translations = new()
     {
         ["en-US"] = new()
         {
