@@ -17,8 +17,14 @@ public static class ThemeService
 
     public static void Apply(string theme)
     {
+        if (theme is not SystemKey and not DarkKey and not LightKey)
+            throw new ArgumentException($"Unknown theme: '{theme}'.", nameof(theme));
+
+        if (System.Windows.Application.Current is not { } app)
+            return;
+
         var resolved = theme == SystemKey ? ReadSystemTheme() : theme;
-        var merged = System.Windows.Application.Current.Resources.MergedDictionaries;
+        var merged = app.Resources.MergedDictionaries;
 
         _darkDict ??= new ResourceDictionary { Source = new Uri(DarkDictUri, UriKind.Relative) };
         _lightDict ??= new ResourceDictionary { Source = new Uri(LightDictUri, UriKind.Relative) };
