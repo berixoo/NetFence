@@ -28,7 +28,6 @@ public static class Database
     private static void EnsureCreated(SqliteConnection conn)
     {
         if (_initialized) return;
-        _initialized = true;
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
@@ -61,5 +60,6 @@ public static class Database
             );
             """;
         cmd.ExecuteNonQuery();
+        _initialized = true;
     }
 }
