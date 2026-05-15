@@ -106,7 +106,7 @@ public static class FirewallService
 
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
         OperationLog.Write(OperationLog.DefaultPath, "Unblock", $"Removed {removed} rule(s) for profile '{profileName}'.", []);
-        OperationHistoryStore.Record("Unblock", profileName, 0);
+        OperationHistoryStore.Record("Unblock", profileName, removed);
         return (profileName, removed);
     }
 

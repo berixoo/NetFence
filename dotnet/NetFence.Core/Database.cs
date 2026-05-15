@@ -17,9 +17,17 @@ public static class Database
     public static SqliteConnection OpenConnection()
     {
         var conn = new SqliteConnection(ConnectionString);
-        conn.Open();
-        EnsureCreated(conn);
-        return conn;
+        try
+        {
+            conn.Open();
+            EnsureCreated(conn);
+            return conn;
+        }
+        catch
+        {
+            conn.Dispose();
+            throw;
+        }
     }
 
     public static string DataDirectory => Path.GetDirectoryName(
@@ -33,7 +41,7 @@ public static class Database
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS RuleProfiles (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
+                Name TEXT NOT NULL UNIQUE,
                 PathsJson TEXT NOT NULL DEFAULT '[]',
                 ProgramsJson TEXT NOT NULL DEFAULT '[]',
                 Mode TEXT NOT NULL DEFAULT 'block_all',

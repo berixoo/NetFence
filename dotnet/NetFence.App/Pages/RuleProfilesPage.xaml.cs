@@ -248,6 +248,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             await Task.Run(FirewallService.UnblockAll);
 
             var rules = JsonSerializer.Deserialize<List<FirewallRuleInfo>>(snapshot.RulesJson) ?? [];
+            var failedPaths = new List<string>();
             foreach (var rule in rules)
             {
                 if (!string.IsNullOrWhiteSpace(rule.Program) && Path.IsPathFullyQualified(rule.Program))
@@ -257,16 +258,26 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                         await Task.Run(() =>
                             FirewallService.Block(rule.Program, rule.ProfileName, false, Array.Empty<string>()));
                     }
-                    catch { }
+                    catch { failedPaths.Add(rule.Program); }
                 }
             }
 
             RuleSnapshotStore.MarkRolledBack(row.Id);
             OperationHistoryStore.Record("Rollback", snapshot.ProfileName, rules.Count);
             Refresh();
-            System.Windows.MessageBox.Show(
-                LocaleService.T("rollbackComplete"), "NetFence",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+
+            if (failedPaths.Count > 0)
+            {
+                System.Windows.MessageBox.Show(
+                    LocaleService.T("rollbackPartial", rules.Count, failedPaths.Count),
+                    "NetFence", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(
+                    LocaleService.T("rollbackComplete"), "NetFence",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
