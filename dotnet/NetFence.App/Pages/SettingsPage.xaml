@@ -3,8 +3,71 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid Margin="24" MaxWidth="480" Background="{DynamicResource ContentBackground}">
         <Grid.Resources>
+            <!-- ComboBox: full template with themed ToggleButton + Popup -->
+            <Style TargetType="ComboBox">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBox">
+                            <Grid>
+                                <ToggleButton Name="ToggleButton"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                              Focusable="False" ClickMode="Press">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="{DynamicResource InputBackground}"
+                                                    BorderBrush="{DynamicResource BorderColor}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="22"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <ContentPresenter Grid.Column="0" Margin="8,0,0,0"
+                                                                      VerticalAlignment="Center"
+                                                                      HorizontalAlignment="Left"/>
+                                                    <Path Grid.Column="1" Data="M0,0 L4,4 L8,0"
+                                                          Stroke="{DynamicResource SecondaryText}"
+                                                          StrokeThickness="1.5"
+                                                          VerticalAlignment="Center"
+                                                          HorizontalAlignment="Center"
+                                                          Margin="0,0,6,0"/>
+                                                </Grid>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                                <ContentPresenter Content="{TemplateBinding SelectionBoxItem}"
+                                                  Margin="12,4,30,4"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Left"
+                                                  IsHitTestVisible="False"/>
+                                <Popup Name="Popup" Placement="Bottom"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       AllowsTransparency="True" Focusable="False"
+                                       PopupAnimation="Slide">
+                                    <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                          MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                        <Border Background="{DynamicResource InputBackground}"
+                                                BorderBrush="{DynamicResource BorderColor}"
+                                                BorderThickness="1" CornerRadius="0,0,4,4">
+                                            <ScrollViewer Margin="4">
+                                                <StackPanel IsItemsHost="True"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </Grid>
+                                </Popup>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ComboBoxItem: themed dropdown items -->
             <Style TargetType="ComboBoxItem">
-                <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+                <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
                 <Setter Property="Padding" Value="8,5"/>
                 <Setter Property="Template">
@@ -30,6 +93,7 @@
                 </Setter>
             </Style>
         </Grid.Resources>
+
         <StackPanel>
             <!-- Language -->
             <Grid Margin="0,0,0,14">
@@ -41,13 +105,6 @@
                            Foreground="{DynamicResource PrimaryText}"/>
                 <ComboBox x:Name="LanguageBox" Grid.Column="1" Width="160"
                           SelectionChanged="LanguageBox_SelectionChanged">
-                    <ComboBox.Resources>
-                        <Style TargetType="ComboBox">
-                            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
-                            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-                        </Style>
-                    </ComboBox.Resources>
                     <ComboBoxItem x:Name="LangEnItem" Tag="en-US"/>
                     <ComboBoxItem x:Name="LangZhItem" Tag="zh-CN"/>
                 </ComboBox>
@@ -63,13 +120,6 @@
                            Foreground="{DynamicResource PrimaryText}"/>
                 <ComboBox x:Name="ThemeBox" Grid.Column="1" Width="160"
                           SelectionChanged="ThemeBox_SelectionChanged">
-                    <ComboBox.Resources>
-                        <Style TargetType="ComboBox">
-                            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
-                            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-                        </Style>
-                    </ComboBox.Resources>
                     <ComboBoxItem x:Name="ThemeSystemItem" Tag="system"/>
                     <ComboBoxItem x:Name="ThemeDarkItem" Tag="dark"/>
                     <ComboBoxItem x:Name="ThemeLightItem" Tag="light"/>
