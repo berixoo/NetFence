@@ -10,9 +10,20 @@ public static class NetworkMonitor
     {
         [1] = "Closed",      [2] = "Listen",       [3] = "SynSent",
         [4] = "SynReceived", [5] = "Established",   [6] = "FinWait1",
-        [7] = "FinWait2",    [8] = "CloseWait",     [9] = "LastAck",
-        [10] = "LastAck",    [11] = "TimeWait",     [12] = "DeleteTcb"
+        [7] = "FinWait2",    [8] = "CloseWait",     [9] = "Closing",
+        [10] = "LastAck",    [11] = "TimeWait",     [12] = "DeleteTcb",
+        [13] = "Bound"
     };
+
+    private static HashSet<string>? _cachedBlockedPrograms;
+    private static DateTime _blockedCacheTime = DateTime.MinValue;
+    private static readonly TimeSpan BlockedCacheTtl = TimeSpan.FromSeconds(30);
+
+    public static void InvalidateBlockedCache()
+    {
+        _cachedBlockedPrograms = null;
+        _blockedCacheTime = DateTime.MinValue;
+    }
 
     public static IReadOnlyList<NetworkConnection> GetConnections()
     {
@@ -27,81 +38,112 @@ public static class NetworkMonitor
 
     private static HashSet<string> GetNetFenceBlockedPrograms()
     {
+        if (_cachedBlockedPrograms is not null && (DateTime.Now - _blockedCacheTime) < BlockedCacheTtl)
+            return _cachedBlockedPrograms;
+
         var programs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             foreach (var rule in FirewallService.GetStatus())
             {
                 if (!string.IsNullOrWhiteSpace(rule.Program) && Path.IsPathFullyQualified(rule.Program))
-                    programs.Add(Path.GetFullPath(rule.Program));
+                {
+                    var expanded = Environment.ExpandEnvironmentVariables(rule.Program);
+                    programs.Add(Path.GetFullPath(expanded));
+                }
             }
         }
         catch { }
+
+        _cachedBlockedPrograms = programs;
+        _blockedCacheTime = DateTime.Now;
         return programs;
     }
 
     private static void EnumerateTcp(List<NetworkConnection> results, HashSet<string> blockedPrograms)
     {
-        var bufSize = 0u;
-        _ = GetExtendedTcpTable(IntPtr.Zero, ref bufSize, false, 2, 5, 0);
-        var buf = Marshal.AllocHGlobal((int)bufSize);
-        try
-        {
-            if (GetExtendedTcpTable(buf, ref bufSize, false, 2, 5, 0) != 0) return;
-
-            var count = Marshal.ReadInt32(buf);
-            var rowSize = Marshal.SizeOf<MibTcpRowOwnerPid>();
-            for (var i = 0; i < count; i++)
+        EnumerateTable(results, blockedPrograms, "TCP",
+            GetExtendedTcpTable, 5, (rowPtr, state) =>
             {
-                var rowPtr = buf + 4 + i * rowSize;
                 var row = Marshal.PtrToStructure<MibTcpRowOwnerPid>(rowPtr);
-
-                var localAddr = new IPAddress((long)row.dwLocalAddr);
-                var remoteAddr = new IPAddress((long)row.dwRemoteAddr);
-                var localPort = (ushort)IPAddress.NetworkToHostOrder((short)row.dwLocalPort);
-                var remotePort = (ushort)IPAddress.NetworkToHostOrder((short)row.dwRemotePort);
-                var state = TcpStates.GetValueOrDefault((int)row.dwState, $"State{row.dwState}");
-
-                var (procName, exePath) = ResolveProcess(row.dwOwningPid);
-                var blocked = exePath is not null && blockedPrograms.Contains(exePath);
-
-                results.Add(new NetworkConnection(
-                    (int)row.dwOwningPid, procName, exePath, "TCP",
-                    localAddr.ToString(), localPort,
-                    remoteAddr.ToString(), remotePort,
-                    state, blocked));
-            }
-        }
-        finally { Marshal.FreeHGlobal(buf); }
+                return (row.dwOwningPid,
+                        new IPAddress((long)row.dwLocalAddr).ToString(),
+                        (ushort)IPAddress.NetworkToHostOrder((short)row.dwLocalPort),
+                        new IPAddress((long)row.dwRemoteAddr).ToString(),
+                        (ushort)IPAddress.NetworkToHostOrder((short)row.dwRemotePort),
+                        state);
+            });
     }
 
     private static void EnumerateUdp(List<NetworkConnection> results, HashSet<string> blockedPrograms)
     {
+        EnumerateTable(results, blockedPrograms, "UDP",
+            GetExtendedUdpTable, 1, (rowPtr, _) =>
+            {
+                var row = Marshal.PtrToStructure<MibUdpRowOwnerPid>(rowPtr);
+                return (row.dwOwningPid,
+                        new IPAddress((long)row.dwLocalAddr).ToString(),
+                        (ushort)IPAddress.NetworkToHostOrder((short)row.dwLocalPort),
+                        "*", 0,
+                        "-");
+            });
+    }
+
+    private delegate uint TableApiDelegate(IntPtr buf, ref uint bufSize, bool order,
+        uint af, uint tableClass, uint reserved);
+
+    private delegate (uint pid, string localAddr, int localPort,
+        string remoteAddr, int remotePort, string state)
+        RowReaderDelegate(IntPtr rowPtr, string defaultState);
+
+    private static void EnumerateTable(List<NetworkConnection> results,
+        HashSet<string> blockedPrograms, string protocol,
+        TableApiDelegate api, uint tableClass, RowReaderDelegate readRow)
+    {
+        const int maxRetries = 2;
+        const uint afInet = 2;
+        var buf = IntPtr.Zero;
         var bufSize = 0u;
-        _ = GetExtendedUdpTable(IntPtr.Zero, ref bufSize, false, 2, 1, 0);
-        var buf = Marshal.AllocHGlobal((int)bufSize);
+
+        for (var attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            var ret = api(IntPtr.Zero, ref bufSize, false, afInet, tableClass, 0);
+            if (bufSize == 0) return;
+
+            if (buf != IntPtr.Zero) Marshal.FreeHGlobal(buf);
+            buf = Marshal.AllocHGlobal((int)bufSize);
+
+            ret = api(buf, ref bufSize, false, afInet, tableClass, 0);
+            if (ret == 0) break;
+
+            if (ret != 122 /* ERROR_INSUFFICIENT_BUFFER */ || attempt == maxRetries)
+            {
+                Marshal.FreeHGlobal(buf);
+                return;
+            }
+        }
+
         try
         {
-            if (GetExtendedUdpTable(buf, ref bufSize, false, 2, 1, 0) != 0) return;
-
             var count = Marshal.ReadInt32(buf);
-            var rowSize = Marshal.SizeOf<MibUdpRowOwnerPid>();
+            var rowSize = Marshal.SizeOf<MibTcpRowOwnerPid>(); // Same size for both structs
             for (var i = 0; i < count; i++)
             {
                 var rowPtr = buf + 4 + i * rowSize;
-                var row = Marshal.PtrToStructure<MibUdpRowOwnerPid>(rowPtr);
+                var defaultState = protocol == "TCP"
+                    ? TcpStates.GetValueOrDefault(Marshal.ReadInt32(rowPtr), "-")
+                    : "-";
 
-                var localAddr = new IPAddress((long)row.dwLocalAddr);
-                var localPort = (ushort)IPAddress.NetworkToHostOrder((short)row.dwLocalPort);
+                var (pid, localAddr, localPort, remoteAddr, remotePort, state) =
+                    readRow(rowPtr, defaultState);
 
-                var (procName, exePath) = ResolveProcess(row.dwOwningPid);
+                var (procName, exePath) = ResolveProcess(pid);
                 var blocked = exePath is not null && blockedPrograms.Contains(exePath);
 
                 results.Add(new NetworkConnection(
-                    (int)row.dwOwningPid, procName, exePath, "UDP",
-                    localAddr.ToString(), localPort,
-                    "*", 0,
-                    "-", blocked));
+                    (int)pid, procName, exePath, protocol,
+                    localAddr, localPort, remoteAddr, remotePort,
+                    state, blocked));
             }
         }
         finally { Marshal.FreeHGlobal(buf); }

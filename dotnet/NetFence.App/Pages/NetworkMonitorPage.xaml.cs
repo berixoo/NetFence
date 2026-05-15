@@ -67,15 +67,16 @@ public partial class NetworkMonitorPage : System.Windows.Controls.UserControl
         try
         {
             var connections = await Task.Run(NetworkMonitor.GetConnections);
-            Dispatcher.Invoke(() =>
-            {
-                _connections.Clear();
-                foreach (var c in connections)
-                    _connections.Add(new ConnectionRow(c));
-                UpdateCountLabel();
-            });
+            _connections.Clear();
+            foreach (var c in connections)
+                _connections.Add(new ConnectionRow(c));
+            UpdateCountLabel();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"NetworkMonitor refresh failed: {ex.Message}");
+            ConnectionCountLabel.Text = LocaleService.T("refreshFailed");
+        }
         finally { _isRefreshing = false; }
     }
 

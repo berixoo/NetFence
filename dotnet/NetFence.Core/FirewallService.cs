@@ -88,6 +88,7 @@ public static class FirewallService
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
         OperationLog.Write(OperationLog.DefaultPath, "Block", $"Blocked profile '{profileName}' for {targets.Count} executable file(s).", targets);
         OperationHistoryStore.Record("Block", profileName, targets.Count);
+        NetworkMonitor.InvalidateBlockedCache();
         return (profileName, targets.ToArray());
     }
 
@@ -107,6 +108,7 @@ public static class FirewallService
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
         OperationLog.Write(OperationLog.DefaultPath, "Unblock", $"Removed {removed} rule(s) for profile '{profileName}'.", []);
         OperationHistoryStore.Record("Unblock", profileName, removed);
+        NetworkMonitor.InvalidateBlockedCache();
         return (profileName, removed);
     }
 
@@ -158,6 +160,7 @@ public static class FirewallService
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines)));
         OperationLog.Write(OperationLog.DefaultPath, "UnblockSelected", $"Removed {removed} rule(s) for {targets.Count} selected executable file(s).", targets.Select(target => target.Program));
         OperationHistoryStore.Record("UnblockSelected", "selected", targets.Count);
+        NetworkMonitor.InvalidateBlockedCache();
         return removed;
     }
 
@@ -176,6 +179,7 @@ public static class FirewallService
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
         OperationLog.Write(OperationLog.DefaultPath, "UnblockAll", $"Removed {removed} NetFence rule(s).", []);
         OperationHistoryStore.Record("UnblockAll", "all", removed);
+        NetworkMonitor.InvalidateBlockedCache();
         return removed;
     }
 
