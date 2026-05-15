@@ -82,8 +82,12 @@ public static class FirewallService
             }
         }
 
+        var preRules = GetStatus();
+        RuleSnapshotStore.Create(profileName, "Block", preRules);
+
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
         OperationLog.Write(OperationLog.DefaultPath, "Block", $"Blocked profile '{profileName}' for {targets.Count} executable file(s).", targets);
+        OperationHistoryStore.Record("Block", profileName, targets.Count);
         return (profileName, targets.ToArray());
     }
 
@@ -97,8 +101,12 @@ public static class FirewallService
             "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule }",
             "$rules.Count");
 
+        var preRules = GetStatus();
+        RuleSnapshotStore.Create(profileName, "Unblock", preRules);
+
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
         OperationLog.Write(OperationLog.DefaultPath, "Unblock", $"Removed {removed} rule(s) for profile '{profileName}'.", []);
+        OperationHistoryStore.Record("Unblock", profileName, 0);
         return (profileName, removed);
     }
 
@@ -143,8 +151,13 @@ public static class FirewallService
         }
 
         scriptLines.Add("$removed");
+
+        var preRules = GetStatus();
+        RuleSnapshotStore.Create("selected", "UnblockSelected", preRules);
+
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines)));
         OperationLog.Write(OperationLog.DefaultPath, "UnblockSelected", $"Removed {removed} rule(s) for {targets.Count} selected executable file(s).", targets.Select(target => target.Program));
+        OperationHistoryStore.Record("UnblockSelected", "selected", targets.Count);
         return removed;
     }
 
@@ -157,8 +170,12 @@ public static class FirewallService
             $rules.Count
             """;
 
+        var preRules = GetStatus();
+        RuleSnapshotStore.Create("all", "UnblockAll", preRules);
+
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
         OperationLog.Write(OperationLog.DefaultPath, "UnblockAll", $"Removed {removed} NetFence rule(s).", []);
+        OperationHistoryStore.Record("UnblockAll", "all", removed);
         return removed;
     }
 
