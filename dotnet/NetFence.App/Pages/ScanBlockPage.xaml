@@ -108,6 +108,11 @@
                           BorderBrush="{DynamicResource BorderColor}"
                           AlternatingRowBackground="{DynamicResource GridRowAlt}"
                           ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
+                    <DataGrid.Resources>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                        </Style>
+                    </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn x:Name="CandidateBlockColumn" Binding="{Binding Selected}" Width="60"/>
                         <DataGridTextColumn x:Name="CandidateProgramColumn" Binding="{Binding Program}" IsReadOnly="True" Width="3*"/>
@@ -128,6 +133,11 @@
                           BorderBrush="{DynamicResource BorderColor}"
                           AlternatingRowBackground="{DynamicResource GridRowAlt}"
                           ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
+                    <DataGrid.Resources>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                        </Style>
+                    </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridTextColumn x:Name="RuleProfileColumn" Binding="{Binding ProfileName}" Width="140"/>
                         <DataGridTextColumn x:Name="RuleDirectionColumn" Binding="{Binding Direction}" Width="80"/>

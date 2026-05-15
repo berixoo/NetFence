@@ -10,18 +10,18 @@
     <SolidColorBrush x:Key="GridRowAlt" Color="#2D2D40"/>
     <SolidColorBrush x:Key="GridRowHover" Color="#3A3A50"/>
     <SolidColorBrush x:Key="PrimaryText" Color="#E0E0E0"/>
-    <SolidColorBrush x:Key="SecondaryText" Color="#AAAAAA"/>
-    <SolidColorBrush x:Key="MutedText" Color="#888888"/>
+    <SolidColorBrush x:Key="SecondaryText" Color="#C0C0C0"/>
+    <SolidColorBrush x:Key="MutedText" Color="#A0A0A0"/>
     <SolidColorBrush x:Key="AccentBlue" Color="#7EB4FF"/>
     <SolidColorBrush x:Key="AccentGreen" Color="#27AE60"/>
     <SolidColorBrush x:Key="AccentRed" Color="#E74C3C"/>
-    <SolidColorBrush x:Key="WarningOrange" Color="#CC9933"/>
+    <SolidColorBrush x:Key="WarningOrange" Color="#E6A817"/>
     <SolidColorBrush x:Key="BorderColor" Color="#4A4A60"/>
     <SolidColorBrush x:Key="SeparatorColor" Color="#3A3A50"/>
     <SolidColorBrush x:Key="StatusBarBackground" Color="#1A1A28"/>
     <SolidColorBrush x:Key="StatusSuccessText" Color="#27AE60"/>
     <SolidColorBrush x:Key="TabSelectedUnderline" Color="#1E5FA8"/>
-    <SolidColorBrush x:Key="TabInactiveText" Color="#888888"/>
+    <SolidColorBrush x:Key="TabInactiveText" Color="#A0A0A0"/>
     <SolidColorBrush x:Key="ProgressBarForeground" Color="#1E5FA8"/>
     <SolidColorBrush x:Key="ButtonPrimaryBackground" Color="#1E5FA8"/>
     <SolidColorBrush x:Key="ButtonPrimaryForeground" Color="#FFFFFF"/>
