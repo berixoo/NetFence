@@ -66,7 +66,11 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
         }
     }
 
-    public async void ScanButton_Click(object sender, RoutedEventArgs e) => await ScanRelatedAsync();
+    public async void ScanButton_Click(object sender, RoutedEventArgs e)
+    {
+        try { await ScanRelatedAsync(); }
+        catch { }
+    }
 
     public async void BlockButton_Click(object sender, RoutedEventArgs e)
     {
@@ -151,23 +155,30 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
 
     public async void UnblockAllButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = System.Windows.MessageBox.Show(
-            LocaleService.T("unblockAllConfirmMessage"),
-            LocaleService.T("unblockAllConfirmTitle"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (confirm != MessageBoxResult.Yes)
+        try
         {
-            return;
-        }
+            var confirm = System.Windows.MessageBox.Show(
+                LocaleService.T("unblockAllConfirmMessage"),
+                LocaleService.T("unblockAllConfirmTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+            {
+                return;
+            }
 
-        await RunBusyAsync("unblockAllRunning", "unblockAllFailed", async () =>
+            await RunBusyAsync("unblockAllRunning", "unblockAllFailed", async () =>
+            {
+                var removed = await Task.Run(FirewallService.UnblockAll);
+                var rules = await Task.Run(FirewallService.GetStatus);
+                ReplaceRules(rules);
+                SetStatus("unblockedAllRules", false, removed);
+            });
+        }
+        catch (Exception ex)
         {
-            var removed = await Task.Run(FirewallService.UnblockAll);
-            var rules = await Task.Run(FirewallService.GetStatus);
-            ReplaceRules(rules);
-            SetStatus("unblockedAllRules", false, removed);
-        });
+            SetStatus("unblockAllFailed", true, ex.Message);
+        }
     }
 
     public async void ExportButton_Click(object sender, RoutedEventArgs e)
@@ -218,7 +229,11 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
         }
     }
 
-    public async void RefreshButton_Click(object sender, RoutedEventArgs e) => await RefreshRulesAsync();
+    public async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        try { await RefreshRulesAsync(); }
+        catch { }
+    }
 
     public async Task RefreshRulesAsync()
     {
@@ -349,8 +364,8 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
             ? LocaleService.T(key)
             : LocaleService.T(key, args);
         StatusText.Foreground = isError
-            ? System.Windows.Media.Brushes.DarkRed
-            : System.Windows.Media.Brushes.Black;
+            ? TryFindResource("AccentRed") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.DarkRed
+            : TryFindResource("PrimaryText") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.Black;
     }
 
     public void ApplyLocale()

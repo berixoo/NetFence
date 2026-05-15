@@ -50,9 +50,16 @@ public static class SettingsService
     private static void Save()
     {
         if (_current is null) return;
-        var dir = Path.GetDirectoryName(FilePath);
-        if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(_current));
+        try
+        {
+            var dir = Path.GetDirectoryName(FilePath);
+            if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(_current));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SettingsService save failed: {ex.Message}");
+        }
     }
 
     private sealed class SettingsData
