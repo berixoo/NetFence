@@ -2,6 +2,34 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid Margin="24" MaxWidth="480" Background="{DynamicResource ContentBackground}">
+        <Grid.Resources>
+            <Style TargetType="ComboBoxItem">
+                <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                <Setter Property="Padding" Value="8,5"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBoxItem">
+                            <Border Name="Border" Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="Border" Property="Background"
+                                            Value="{DynamicResource SidebarItemHover}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Border" Property="Background"
+                                            Value="{DynamicResource SidebarItemSelected}"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Grid.Resources>
         <StackPanel>
             <!-- Language -->
             <Grid Margin="0,0,0,14">
@@ -12,10 +40,14 @@
                 <TextBlock x:Name="LanguageLabel" VerticalAlignment="Center"
                            Foreground="{DynamicResource PrimaryText}"/>
                 <ComboBox x:Name="LanguageBox" Grid.Column="1" Width="160"
-                          SelectionChanged="LanguageBox_SelectionChanged"
-                          Background="{DynamicResource InputBackground}"
-                          Foreground="{DynamicResource PrimaryText}"
-                          BorderBrush="{DynamicResource BorderColor}">
+                          SelectionChanged="LanguageBox_SelectionChanged">
+                    <ComboBox.Resources>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                        </Style>
+                    </ComboBox.Resources>
                     <ComboBoxItem x:Name="LangEnItem" Tag="en-US"/>
                     <ComboBoxItem x:Name="LangZhItem" Tag="zh-CN"/>
                 </ComboBox>
@@ -30,10 +62,14 @@
                 <TextBlock x:Name="ThemeLabel" VerticalAlignment="Center"
                            Foreground="{DynamicResource PrimaryText}"/>
                 <ComboBox x:Name="ThemeBox" Grid.Column="1" Width="160"
-                          SelectionChanged="ThemeBox_SelectionChanged"
-                          Background="{DynamicResource InputBackground}"
-                          Foreground="{DynamicResource PrimaryText}"
-                          BorderBrush="{DynamicResource BorderColor}">
+                          SelectionChanged="ThemeBox_SelectionChanged">
+                    <ComboBox.Resources>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                        </Style>
+                    </ComboBox.Resources>
                     <ComboBoxItem x:Name="ThemeSystemItem" Tag="system"/>
                     <ComboBoxItem x:Name="ThemeDarkItem" Tag="dark"/>
                     <ComboBoxItem x:Name="ThemeLightItem" Tag="light"/>

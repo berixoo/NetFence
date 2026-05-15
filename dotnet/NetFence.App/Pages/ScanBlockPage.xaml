@@ -2,6 +2,15 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid Background="{DynamicResource ContentBackground}" Margin="16">
+        <Grid.Resources>
+            <Style TargetType="Button">
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.6"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -95,8 +104,46 @@
 
         <!-- Row 3: TabControl with two tabs -->
         <TabControl x:Name="Tabs" Grid.Row="3" Margin="0,0,0,10"
-                    Background="{DynamicResource ContentBackground}"
+                    Background="Transparent"
                     BorderBrush="{DynamicResource BorderColor}">
+            <TabControl.Resources>
+                <Style TargetType="TabPanel">
+                    <Setter Property="Background" Value="{DynamicResource PanelBackground}"/>
+                </Style>
+                <Style TargetType="TabItem">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TabInactiveText}"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="14,7"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border Name="TabBorder" Background="Transparent"
+                                        BorderBrush="Transparent" BorderThickness="0,0,0,2"
+                                        Padding="{TemplateBinding Padding}" Cursor="Hand">
+                                    <ContentPresenter x:Name="TabContent"
+                                                      ContentSource="Header"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="TabBorder" Property="BorderBrush"
+                                                Value="{DynamicResource TabSelectedUnderline}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                                        <Setter TargetName="TabContent" Property="TextElement.FontWeight"
+                                                Value="SemiBold"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
             <TabItem x:Name="CandidatesTab">
                 <TabItem.Header>
                     <TextBlock x:Name="CandidatesTabHeader" Foreground="{DynamicResource PrimaryText}"/>
