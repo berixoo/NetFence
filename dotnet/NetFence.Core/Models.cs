@@ -31,3 +31,15 @@ public sealed record FirewallRuleInfo(
 public sealed record FirewallProgramTarget(string ProfileName, string Program);
 
 public sealed record SnapshotExportResult(string Path, int RowCount);
+
+public sealed record NetworkConnection(
+    int ProcessId,
+    string ProcessName,
+    string? ExecutablePath,
+    string Protocol,
+    string LocalAddress,
+    int LocalPort,
+    string RemoteAddress,
+    int RemotePort,
+    string State,
+    bool IsBlockedByNetFence);
