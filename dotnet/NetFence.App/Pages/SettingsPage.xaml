@@ -1,0 +1,62 @@
+<UserControl x:Class="NetFence.App.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="24" MaxWidth="480" Background="{DynamicResource ContentBackground}">
+        <StackPanel>
+            <!-- Language -->
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="LanguageLabel" VerticalAlignment="Center"
+                           Foreground="{DynamicResource PrimaryText}"/>
+                <ComboBox x:Name="LanguageBox" Grid.Column="1" Width="160"
+                          SelectionChanged="LanguageBox_SelectionChanged"
+                          Background="{DynamicResource InputBackground}"
+                          Foreground="{DynamicResource PrimaryText}"
+                          BorderBrush="{DynamicResource BorderColor}">
+                    <ComboBoxItem x:Name="LangEnItem" Tag="en-US"/>
+                    <ComboBoxItem x:Name="LangZhItem" Tag="zh-CN"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- Theme -->
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="ThemeLabel" VerticalAlignment="Center"
+                           Foreground="{DynamicResource PrimaryText}"/>
+                <ComboBox x:Name="ThemeBox" Grid.Column="1" Width="160"
+                          SelectionChanged="ThemeBox_SelectionChanged"
+                          Background="{DynamicResource InputBackground}"
+                          Foreground="{DynamicResource PrimaryText}"
+                          BorderBrush="{DynamicResource BorderColor}">
+                    <ComboBoxItem x:Name="ThemeSystemItem" Tag="system"/>
+                    <ComboBoxItem x:Name="ThemeDarkItem" Tag="dark"/>
+                    <ComboBoxItem x:Name="ThemeLightItem" Tag="light"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- Open Log -->
+            <Button x:Name="OpenLogButton" Width="160" Height="32"
+                    HorizontalAlignment="Left" Margin="0,0,0,20"
+                    Click="OpenLogButton_Click"
+                    Background="{DynamicResource ButtonSecondaryBackground}"
+                    Foreground="{DynamicResource ButtonSecondaryForeground}"
+                    BorderBrush="{DynamicResource ButtonSecondaryBorder}"/>
+
+            <!-- Separator -->
+            <Border Height="1" Margin="0,0,0,16"
+                    Background="{DynamicResource SeparatorColor}"/>
+
+            <!-- About -->
+            <TextBlock x:Name="AboutLabel" FontWeight="SemiBold" Margin="0,0,0,6"
+                       Foreground="{DynamicResource PrimaryText}"/>
+            <TextBlock x:Name="AboutText" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryText}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
