@@ -20,6 +20,8 @@ public partial class MainWindow : Window
         LoadPages();
         PopulateSidebar();
         LocaleService.LanguageChanged += OnLanguageChanged;
+        ThemeService.ThemeChanged += () => Dispatcher.Invoke(() => ThemeService.ApplyTitleBar(this));
+        SourceInitialized += (_, _) => ThemeService.ApplyTitleBar(this);
 
         Loaded += async (_, _) =>
         {

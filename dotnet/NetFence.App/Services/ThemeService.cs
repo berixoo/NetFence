@@ -15,6 +15,8 @@ public static class ThemeService
     private static ResourceDictionary? _darkDict;
     private static ResourceDictionary? _lightDict;
 
+    public static event Action? ThemeChanged;
+
     public static void Apply(string theme)
     {
         if (theme is not SystemKey and not DarkKey and not LightKey)
@@ -34,12 +36,32 @@ public static class ThemeService
         merged.Add(resolved == DarkKey ? _darkDict : _lightDict);
 
         SettingsService.Theme = theme;
+        ThemeChanged?.Invoke();
     }
 
     public static string GetEffectiveTheme(string stored)
     {
         return stored == SystemKey ? ReadSystemTheme() : stored;
     }
+
+    public static void ApplyTitleBar(Window window)
+    {
+        var effective = GetEffectiveTheme(SettingsService.Theme);
+        SetTitleBarDarkMode(window, effective == DarkKey);
+    }
+
+    private static void SetTitleBarDarkMode(Window window, bool dark)
+    {
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        int useDark = dark ? 1 : 0;
+        // DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Win10 20H1+), fallback 19 (Win10 1809+)
+        if (DwmSetWindowAttribute(hwnd, 20, ref useDark, 4) != 0)
+            DwmSetWindowAttribute(hwnd, 19, ref useDark, 4);
+    }
+
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
     private static string ReadSystemTheme()
     {
