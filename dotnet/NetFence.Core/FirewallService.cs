@@ -58,9 +58,13 @@ public static class FirewallService
             }
         }
 
+        var group = NetFenceRules.GetRuleGroup(profileName);
         var scriptLines = new List<string>
         {
-            "$ErrorActionPreference = 'Stop'"
+            "$ErrorActionPreference = 'Stop'",
+            $"$group = {PowerShellRunner.Quote(group)}",
+            "$existingNames = @{}",
+            "Get-NetFirewallRule -Group $group -ErrorAction SilentlyContinue | ForEach-Object { $existingNames[$_.DisplayName] = $true }"
         };
 
         foreach (var target in targets.OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
@@ -70,11 +74,10 @@ public static class FirewallService
                 var displayName = NetFenceRules.GetRuleName(profileName, target, direction);
                 var quotedName = PowerShellRunner.Quote(displayName);
                 scriptLines.Add(string.Join(Environment.NewLine,
-                    $"$existing = Get-NetFirewallRule -DisplayName {quotedName} -ErrorAction SilentlyContinue",
-                    "if ($existing) {",
+                    $"if ($existingNames.ContainsKey({quotedName})) {{",
                     $"    Set-NetFirewallRule -DisplayName {quotedName} -Enabled True -Action Block -Direction {direction} -Profile Any | Out-Null",
                     "} else {",
-                    $"    New-NetFirewallRule -DisplayName {quotedName} -Group {PowerShellRunner.Quote(NetFenceRules.GetRuleGroup(profileName))} -Direction {direction} -Action Block -Program {PowerShellRunner.Quote(target)} -Profile Any -Enabled True -Description {PowerShellRunner.Quote($"Managed by NetFence for profile '{profileName}'. Remove with NetFence to restore networking.")} | Out-Null",
+                    $"    New-NetFirewallRule -DisplayName {quotedName} -Group $group -Direction {direction} -Action Block -Program {PowerShellRunner.Quote(target)} -Profile Any -Enabled True -Description {PowerShellRunner.Quote($"Managed by NetFence for profile '{profileName}'. Remove with NetFence to restore networking.")} | Out-Null",
                     "}"));
             }
         }
@@ -123,13 +126,16 @@ public static class FirewallService
             "$removed = 0"
         };
 
-        foreach (var target in targets)
+        foreach (var group in targets.GroupBy(target => target.ProfileName, StringComparer.OrdinalIgnoreCase))
         {
+            var targetSetName = "$targetPrograms" + Math.Abs(StringComparer.OrdinalIgnoreCase.GetHashCode(group.Key));
             scriptLines.Add(string.Join(Environment.NewLine,
-                $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(NetFenceRules.GetRuleGroup(target.ProfileName))} -ErrorAction SilentlyContinue)",
+                $"{targetSetName} = @{{}}",
+                string.Join(Environment.NewLine, group.Select(target => $"{targetSetName}[{PowerShellRunner.Quote(target.Program)}] = $true")),
+                $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(NetFenceRules.GetRuleGroup(group.Key))} -ErrorAction SilentlyContinue)",
                 "foreach ($rule in $rules) {",
                 "    $app = $rule | Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue",
-                $"    if ([string]::Equals([string]$app.Program, {PowerShellRunner.Quote(target.Program)}, [System.StringComparison]::OrdinalIgnoreCase)) {{",
+                $"    if ({targetSetName}.ContainsKey([string]$app.Program)) {{",
                 "        $rule | Remove-NetFirewallRule",
                 "        $removed += 1",
                 "    }",

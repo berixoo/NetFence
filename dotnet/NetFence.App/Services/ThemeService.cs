@@ -9,8 +9,8 @@ public static class ThemeService
     public const string DarkKey = "dark";
     public const string LightKey = "light";
 
-    private const string DarkDictUri = "Themes/DarkTheme.xaml";
-    private const string LightDictUri = "Themes/LightTheme.xaml";
+    private const string DarkDictUri = "pack://application:,,,/NetFence;component/Themes/DarkTheme.xaml";
+    private const string LightDictUri = "pack://application:,,,/NetFence;component/Themes/LightTheme.xaml";
 
     private static ResourceDictionary? _darkDict;
     private static ResourceDictionary? _lightDict;
@@ -28,8 +28,16 @@ public static class ThemeService
         var resolved = theme == SystemKey ? ReadSystemTheme() : theme;
         var merged = app.Resources.MergedDictionaries;
 
-        _darkDict ??= new ResourceDictionary { Source = new Uri(DarkDictUri, UriKind.Relative) };
-        _lightDict ??= new ResourceDictionary { Source = new Uri(LightDictUri, UriKind.Relative) };
+        _darkDict ??= LoadThemeDict(DarkDictUri);
+        _lightDict ??= LoadThemeDict(LightDictUri);
+
+        if (_darkDict is null || _lightDict is null)
+        {
+            System.Windows.MessageBox.Show(
+                "Failed to load theme resources. The application may not display correctly.",
+                "NetFence", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
 
         merged.Remove(_darkDict);
         merged.Remove(_lightDict);
@@ -62,6 +70,22 @@ public static class ThemeService
 
     [System.Runtime.InteropServices.DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private static ResourceDictionary? LoadThemeDict(string uri)
+    {
+        try
+        {
+            var dict = new ResourceDictionary { Source = new Uri(uri, UriKind.Absolute) };
+            // Force load by accessing Keys
+            _ = dict.Keys.Count;
+            return dict;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ThemeService load failed for {uri}: {ex}");
+            return null;
+        }
+    }
 
     private static string ReadSystemTheme()
     {

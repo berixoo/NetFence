@@ -10,6 +10,7 @@ var tests = new List<(string Name, Action Body)>
     ("folder targets include recursive exe files only", TestExecutableTargets),
     ("empty target folders fail clearly", TestEmptyTargetFolder),
     ("related candidates merge reasons and skip system paths", TestRelatedCandidates),
+    ("related candidates do not auto-select shared runtimes", TestSharedRuntimeCandidates),
     ("snapshot export writes rules and candidates", TestSnapshotExport),
     ("operation log appends action and items", TestOperationLog),
     ("first run state persists marker", TestFirstRunState),
@@ -169,6 +170,46 @@ static void TestRelatedCandidates()
         AssertTrue(!programs.Contains(system), "system executable should be skipped");
         AssertEqual(candidates.Count(c => string.Equals(c.Program, network, StringComparison.OrdinalIgnoreCase)), 1);
         AssertTrue(candidates.Single(c => string.Equals(c.Program, network, StringComparison.OrdinalIgnoreCase)).Reason.Contains("active network connection"), "network reason should be merged");
+    }
+    finally
+    {
+        Directory.Delete(root, true);
+    }
+}
+
+static void TestSharedRuntimeCandidates()
+{
+    var root = NewTempDir();
+    try
+    {
+        var appDir = Path.Combine(root, "Vendor", "App");
+        var runtimeDir = Path.Combine(root, "SharedRuntime", "dotnet");
+        Directory.CreateDirectory(appDir);
+        Directory.CreateDirectory(runtimeDir);
+        var main = Path.Combine(appDir, "main.exe");
+        var helper = Path.Combine(appDir, "helper.exe");
+        var runtime = Path.Combine(runtimeDir, "dotnet.exe");
+        foreach (var file in new[] { main, helper, runtime })
+        {
+            File.WriteAllText(file, "");
+        }
+
+        var rows = new[]
+        {
+            new ProcessRow(100, 1, "main", main, Quote(main)),
+            new ProcessRow(101, 100, "helper", helper, Quote(helper)),
+            new ProcessRow(102, 100, "dotnet", runtime, $"{Quote(runtime)} {Quote(main)}"),
+        };
+
+        var candidates = RelatedProcessScanner.GetRelatedCandidates(main, rows, Array.Empty<int>()).ToArray();
+        var mainCandidate = candidates.Single(item => string.Equals(item.Program, main, StringComparison.OrdinalIgnoreCase));
+        var helperCandidate = candidates.Single(item => string.Equals(item.Program, helper, StringComparison.OrdinalIgnoreCase));
+        var runtimeCandidate = candidates.Single(item => string.Equals(item.Program, runtime, StringComparison.OrdinalIgnoreCase));
+
+        AssertTrue(mainCandidate.Selected, "selected target should remain checked");
+        AssertTrue(helperCandidate.Selected, "same install folder helper should remain checked");
+        AssertTrue(!runtimeCandidate.Selected, "shared runtime outside the install folder should not be checked by default");
+        AssertTrue(runtimeCandidate.Reason.Contains("shared runtime", StringComparison.OrdinalIgnoreCase), "shared runtime reason should be visible");
     }
     finally
     {

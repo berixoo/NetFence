@@ -1,0 +1,67 @@
+<h2>NetFence 导航架构方案</h2>
+<p class="subtitle">当前为单窗口+标签页，未来需容纳：程序扫描、联网监控、服务/计划任务、规则档案、联网模式、日志设置。哪种导航模式最合适？</p>
+
+<div class="options">
+  <div class="option" data-choice="sidebar" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>侧栏导航（Sidebar）</h3>
+      <p>左侧固定图标+文字导航栏，右侧内容区切换。类似 VS Code / Windows 设置。模块再多也不拥挤，扩展性最好。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>顶部标签页（Tabs）</h3>
+      <p>保持当前标签页模式，顶部横向排列。简单直观，但 6+ 标签页会拥挤，需要折叠或滚动。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="ribbon" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Ribbon 工具栏</h3>
+      <p>类似 Office 的功能区模式，顶部大图标分组。适合操作密集型，但占用垂直空间大。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>推荐方案 A — 侧栏导航</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">侧栏布局示意</div>
+      <div class="mockup-body">
+        <div style="display:flex;height:280px;">
+          <div class="mock-sidebar" style="width:180px;min-width:180px;padding:8px;">
+            <div style="padding:8px;margin:4px 0;background:#1e3a5f;border-radius:4px;color:white;font-weight:bold;">NetFence</div>
+            <div style="padding:8px;margin:4px 0;background:#e8f0fe;border-radius:4px;">扫描封禁</div>
+            <div style="padding:8px;margin:4px 0;">联网监控</div>
+            <div style="padding:8px;margin:4px 0;">服务/任务</div>
+            <div style="padding:8px;margin:4px 0;">规则档案</div>
+            <div style="padding:8px;margin:4px 0;">设置/日志</div>
+          </div>
+          <div class="mock-content" style="flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-weight:bold;">扫描封禁</div>
+            <div class="placeholder" style="flex:1;">当前模块内容区域</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">标签页布局示意（对比）</div>
+      <div class="mockup-body">
+        <div style="display:flex;flex-direction:column;height:280px;">
+          <div style="display:flex;border-bottom:1px solid #ccc;gap:0;">
+            <div style="padding:6px 12px;border-bottom:2px solid #1e3a5f;font-weight:bold;">扫描封禁</div>
+            <div style="padding:6px 12px;">联网监控</div>
+            <div style="padding:6px 12px;">服务/任务</div>
+            <div style="padding:6px 12px;">规则档案</div>
+            <div style="padding:6px 12px;">设置</div>
+            <div style="padding:6px 12px;color:#999;">...</div>
+          </div>
+          <div class="placeholder" style="flex:1;margin:8px;">标签页已满，第六个开始挤压</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

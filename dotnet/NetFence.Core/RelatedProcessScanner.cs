@@ -26,7 +26,7 @@ public static class RelatedProcessScanner
 
         foreach (var target in targetExecutables)
         {
-            Add(candidates, target, "selected target", 0, "");
+                Add(candidates, target, "selected target", 0, "", true);
         }
 
         foreach (var row in rows)
@@ -43,26 +43,26 @@ public static class RelatedProcessScanner
             if (targetExecutables.Contains(executable))
             {
                 rootProcessIds.Add(row.ProcessId);
-                Add(candidates, executable, "running target process", row.ProcessId, row.ProcessName);
+                Add(candidates, executable, "running target process", row.ProcessId, row.ProcessName, true);
             }
 
             if (NetFenceRules.IsPathUnderDirectory(executable, installDirectory))
             {
-                Add(candidates, executable, "same install folder", row.ProcessId, row.ProcessName);
+                Add(candidates, executable, "same install folder", row.ProcessId, row.ProcessName, true);
             }
 
             if (!string.IsNullOrWhiteSpace(row.CommandLine) &&
                 (row.CommandLine.Contains(fullPath, StringComparison.OrdinalIgnoreCase) ||
                  row.CommandLine.Contains(installDirectory, StringComparison.OrdinalIgnoreCase)))
             {
-                Add(candidates, executable, "command line references target", row.ProcessId, row.ProcessName);
+                Add(candidates, executable, "command line references target", row.ProcessId, row.ProcessName, ShouldAutoSelect(executable, installDirectory));
             }
         }
 
         foreach (var childPath in GetLinkedProcessPaths(rootProcessIds, rows))
         {
             var row = rows.FirstOrDefault(item => string.Equals(item.ExecutablePath, childPath, StringComparison.OrdinalIgnoreCase));
-            Add(candidates, childPath, "child process", row?.ProcessId ?? 0, row?.ProcessName ?? "");
+            Add(candidates, childPath, "child process", row?.ProcessId ?? 0, row?.ProcessName ?? "", ShouldAutoSelect(childPath, installDirectory));
         }
 
         foreach (var row in rows)
@@ -71,7 +71,7 @@ public static class RelatedProcessScanner
                 !string.IsNullOrWhiteSpace(row.ExecutablePath) &&
                 candidates.ContainsKey(Path.GetFullPath(row.ExecutablePath)))
             {
-                Add(candidates, row.ExecutablePath, "active network connection", row.ProcessId, row.ProcessName);
+                Add(candidates, row.ExecutablePath, "active network connection", row.ProcessId, row.ProcessName, ShouldAutoSelect(row.ExecutablePath, installDirectory));
             }
         }
 
@@ -117,7 +117,8 @@ public static class RelatedProcessScanner
         string program,
         string reason,
         int processId,
-        string processName)
+        string processName,
+        bool selected)
     {
         if (string.IsNullOrWhiteSpace(program) ||
             !File.Exists(program) ||
@@ -134,7 +135,12 @@ public static class RelatedProcessScanner
             candidates[fullPath] = builder;
         }
 
+        if (!selected && IsSharedRuntimeOrDependency(fullPath))
+        {
+            builder.AddReason("shared runtime or common dependency");
+        }
         builder.AddReason(reason);
+        builder.Selected = builder.Selected || selected;
         if (builder.ProcessId == 0 && processId > 0)
         {
             builder.ProcessId = processId;
@@ -145,9 +151,51 @@ public static class RelatedProcessScanner
         }
     }
 
+    private static bool ShouldAutoSelect(string program, string installDirectory) =>
+        NetFenceRules.IsPathUnderDirectory(program, installDirectory) || !IsSharedRuntimeOrDependency(program);
+
+    private static bool IsSharedRuntimeOrDependency(string program)
+    {
+        var fileName = Path.GetFileName(program);
+        if (SharedRuntimeNames.Contains(fileName))
+        {
+            return true;
+        }
+
+        var normalized = Path.GetFullPath(program).Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        return SharedRuntimePathFragments.Any(fragment =>
+            normalized.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static readonly HashSet<string> SharedRuntimeNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "dotnet.exe",
+        "java.exe",
+        "javaw.exe",
+        "node.exe",
+        "python.exe",
+        "pythonw.exe",
+        "msedgewebview2.exe",
+        "crashpad_handler.exe",
+        "cefsharp.browsersubprocess.exe",
+        "vshost.exe"
+    };
+
+    private static readonly string[] SharedRuntimePathFragments =
+    [
+        $"{Path.DirectorySeparatorChar}Common Files{Path.DirectorySeparatorChar}",
+        $"{Path.DirectorySeparatorChar}Microsoft{Path.DirectorySeparatorChar}EdgeWebView{Path.DirectorySeparatorChar}",
+        $"{Path.DirectorySeparatorChar}Microsoft{Path.DirectorySeparatorChar}EdgeCore{Path.DirectorySeparatorChar}",
+        $"{Path.DirectorySeparatorChar}dotnet{Path.DirectorySeparatorChar}",
+        $"{Path.DirectorySeparatorChar}Java{Path.DirectorySeparatorChar}",
+        $"{Path.DirectorySeparatorChar}nodejs{Path.DirectorySeparatorChar}",
+        $"{Path.DirectorySeparatorChar}Python{Path.DirectorySeparatorChar}"
+    ];
+
     private sealed class CandidateBuilder(string program)
     {
         private readonly List<string> _reasons = [];
+        public bool Selected { get; set; }
         public int ProcessId { get; set; }
         public string ProcessName { get; set; } = "";
 
@@ -160,6 +208,6 @@ public static class RelatedProcessScanner
         }
 
         public RelatedCandidate ToCandidate() =>
-            new(true, program, string.Join("; ", _reasons), ProcessId, ProcessName);
+            new(Selected, program, string.Join("; ", _reasons), ProcessId, ProcessName);
     }
 }

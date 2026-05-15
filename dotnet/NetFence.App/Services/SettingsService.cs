@@ -39,8 +39,9 @@ public static class SettingsService
                 _current = new SettingsData();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"SettingsService load failed: {ex.Message}");
             _current = new SettingsData();
         }
         return _current;

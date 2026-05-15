@@ -4,6 +4,9 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Theme dictionaries loaded by ThemeService at startup -->
+            </ResourceDictionary.MergedDictionaries>
             <Style x:Key="DataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
                 <Setter Property="Background" Value="{DynamicResource PanelBackground}"/>
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
