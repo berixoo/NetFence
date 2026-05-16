@@ -71,43 +71,28 @@ public partial class App : System.Windows.Application
 
         try
         {
-            base.OnStartup(e);
+            _mainWindow = new MainWindow();
+            MainWindow = _mainWindow;
+            _mainWindow.Closing += (_, args) =>
+            {
+                if (!_isExiting)
+                {
+                    args.Cancel = true;
+                    _mainWindow.Hide();
+                }
+            };
+            _mainWindow.Show();
         }
         catch (Exception ex)
         {
-            var msg = $"Window creation failed: {ex}";
-            OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow", msg, []);
-            try { System.Windows.MessageBox.Show(msg, "NetFence Startup Error", MessageBoxButton.OK, MessageBoxImage.Error); }
-            catch { }
-            Shutdown();
-            return;
-        }
-
-        if (MainWindow is not MainWindow mw)
-        {
-            var detail = _lastDispatcherError ?? "(no dispatcher error captured)";
             OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow",
-                $"MainWindow is null. Dispatcher error: {detail}", []);
-            try
-            {
-                System.Windows.MessageBox.Show(
-                    $"MainWindow creation failed.\n\n{detail}",
-                    "NetFence Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+                ex.ToString(), []);
+            try { System.Windows.MessageBox.Show(ex.ToString(), "NetFence Startup Error",
+                MessageBoxButton.OK, MessageBoxImage.Error); }
             catch { }
             Shutdown();
             return;
         }
-
-        _mainWindow = mw;
-        _mainWindow.Closing += (_, args) =>
-        {
-            if (!_isExiting)
-            {
-                args.Cancel = true;
-                _mainWindow.Hide();
-            }
-        };
     }
 
     private void CreateTrayIcon()
