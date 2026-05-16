@@ -27,7 +27,7 @@ public partial class MainWindow : Window
         {
             if (!ShowFirstRunWarning())
             {
-                Close();
+                System.Windows.Application.Current.Shutdown();
                 return;
             }
             await (_scanBlockPage?.RefreshRulesAsync() ?? Task.CompletedTask);

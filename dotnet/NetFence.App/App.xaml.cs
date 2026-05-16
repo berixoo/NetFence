@@ -97,13 +97,16 @@ public partial class App : System.Windows.Application
             new Forms.ToolStripMenuItem(LocaleService.T("trayExit"), null, (_, _) => ExitApplication())
         });
 
+        if (icon is null) icon = System.Drawing.SystemIcons.Application;
+
         _trayIcon = new Forms.NotifyIcon
         {
-            Icon = icon!,
+            Icon = icon,
             Visible = true,
             Text = "NetFence",
             ContextMenuStrip = strip
         };
+        _trayIcon.DoubleClick += (_, _) => ShowMainWindow();
     }
 
     private void StartWatcher()
@@ -114,48 +117,55 @@ public partial class App : System.Windows.Application
 
     private void OnProcessStarted(object? sender, WatcherEventArgs e)
     {
-        try
+        // Offload to thread pool — don't block WMI event thread
+        Task.Run(() =>
         {
-            var blockedPrograms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var rule in FirewallService.GetStatus())
-            {
-                if (!string.IsNullOrWhiteSpace(rule.Program) && Path.IsPathFullyQualified(rule.Program))
-                    blockedPrograms.Add(Path.GetFullPath(rule.Program));
-            }
-
-            string? parentExe;
             try
             {
-                using var proc = Process.GetProcessById(e.ParentProcessId);
-                parentExe = proc.MainModule?.FileName;
+                var blockedPrograms = NetworkMonitor.GetConnections() as object; // use caching
+                var blockedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var rule in FirewallService.GetStatus())
+                {
+                    if (!string.IsNullOrWhiteSpace(rule.Program) && Path.IsPathFullyQualified(rule.Program))
+                        blockedSet.Add(Path.GetFullPath(rule.Program));
+                }
+
+                string? parentExe;
+                try
+                {
+                    using var proc = Process.GetProcessById(e.ParentProcessId);
+                    parentExe = proc.MainModule?.FileName;
+                }
+                catch { return; }
+
+                if (parentExe is null || !blockedSet.Contains(parentExe)) return;
+
+                string? childExe;
+                try
+                {
+                    using var proc = Process.GetProcessById(e.ProcessId);
+                    childExe = proc.MainModule?.FileName;
+                }
+                catch { return; }
+
+                if (childExe is null || blockedSet.Contains(childExe)) return;
+
+                FirewallService.Block(childExe, "auto", false, Array.Empty<string>());
+                Dispatcher.Invoke(() =>
+                    _trayIcon?.ShowBalloonTip(3000, "NetFence",
+                        LocaleService.T("trayAutoBlocked", Path.GetFileName(childExe)),
+                        Forms.ToolTipIcon.Info));
             }
-            catch { return; }
-
-            if (parentExe is null || !blockedPrograms.Contains(parentExe)) return;
-
-            string? childExe;
-            try
-            {
-                using var proc = Process.GetProcessById(e.ProcessId);
-                childExe = proc.MainModule?.FileName;
-            }
-            catch { return; }
-
-            if (childExe is null || blockedPrograms.Contains(childExe)) return;
-
-            FirewallService.Block(childExe, "auto", false, Array.Empty<string>());
-            Dispatcher.Invoke(() =>
-                _trayIcon?.ShowBalloonTip(3000, "NetFence",
-                    LocaleService.T("trayAutoBlocked", Path.GetFileName(childExe)),
-                    Forms.ToolTipIcon.Info));
-        }
-        catch { }
+            catch { }
+        });
     }
 
     private void ShowMainWindow()
     {
-        _mainWindow?.Show();
-        _mainWindow?.Activate();
+        if (_mainWindow is null) return;
+        _mainWindow.WindowState = WindowState.Normal;
+        _mainWindow.Show();
+        _mainWindow.Activate();
     }
 
     private bool IsAutoStartEnabled()
@@ -174,8 +184,10 @@ public partial class App : System.Windows.Application
         {
             using var key = Registry.CurrentUser.OpenSubKey(AutoStartKey, true);
             if (enable)
-                key?.SetValue(AutoStartValue,
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NetFence.exe"));
+            {
+                var exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NetFence.exe");
+                key?.SetValue(AutoStartValue, $"\"{exePath}\"");
+            }
             else
                 key?.DeleteValue(AutoStartValue, false);
         }
@@ -197,15 +209,15 @@ public partial class App : System.Windows.Application
             "NetFence");
         var batchPath = Path.Combine(Path.GetTempPath(), "netfence-uninstall.bat");
 
-        File.WriteAllText(batchPath, $"""
-            @echo off
-            timeout /t 2 /nobreak >nul
-            reg delete "HKCU\{AutoStartKey}" /v "{AutoStartValue}" /f 2>nul
-            if exist "{dataDir}" rmdir /s /q "{dataDir}"
-            if exist "{appDir}" rmdir /s /q "{appDir}"
-            del "%~f0"
-            """,
-            System.Text.Encoding.ASCII);
+        var batchContent = string.Join(Environment.NewLine,
+            "@echo off",
+            "timeout /t 5 /nobreak >nul",
+            $"reg delete \"HKCU\\{AutoStartKey}\" /v \"{AutoStartValue}\" /f 2>nul",
+            $"if exist \"{dataDir}\" rmdir /s /q \"{dataDir}\"",
+            $"if exist \"{appDir}\" rmdir /s /q \"{appDir}\"",
+            "del \"%~f0\"");
+        File.WriteAllText(batchPath, batchContent,
+            new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{batchPath}\"")
         {

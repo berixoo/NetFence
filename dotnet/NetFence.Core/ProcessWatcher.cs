@@ -32,6 +32,7 @@ public static class ProcessWatcher
         _watcher.EventArrived -= OnEventArrived;
         _watcher.Dispose();
         _watcher = null;
+        ProcessStarted = null;
     }
 
     private static void OnEventArrived(object sender, EventArrivedEventArgs e)
@@ -46,6 +47,6 @@ public static class ProcessWatcher
                 ParentProcessId = parentPid
             });
         }
-        catch { }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ProcessWatcher error: {ex.Message}"); }
     }
 }
