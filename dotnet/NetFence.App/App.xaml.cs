@@ -15,6 +15,7 @@ public partial class App : System.Windows.Application
     private Forms.ToolStripMenuItem? _watcherMenuItem;
     private Forms.ToolStripMenuItem? _autoStartMenuItem;
     private bool _isExiting;
+    private bool _ownsTrayIcon;
 
     private const string AutoStartKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AutoStartValue = "NetFence";
@@ -65,15 +66,25 @@ public partial class App : System.Windows.Application
     private void CreateTrayIcon()
     {
         var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NetFence.exe");
-        var icon = System.Drawing.Icon.ExtractAssociatedIcon(iconPath);
+        System.Drawing.Icon icon;
+        try { icon = System.Drawing.Icon.ExtractAssociatedIcon(iconPath); _ownsTrayIcon = true; }
+        catch { icon = System.Drawing.SystemIcons.Application; _ownsTrayIcon = false; }
 
         _watcherMenuItem = new Forms.ToolStripMenuItem(LocaleService.T("trayEnableWatcher"))
             { Checked = true };
         _watcherMenuItem.Click += (_, _) =>
         {
-            _watcherMenuItem.Checked = !_watcherMenuItem.Checked;
-            if (_watcherMenuItem.Checked) StartWatcher();
-            else ProcessWatcher.Stop();
+            var wasChecked = _watcherMenuItem.Checked;
+            _watcherMenuItem.Checked = !wasChecked;
+            try
+            {
+                if (_watcherMenuItem.Checked) StartWatcher();
+                else ProcessWatcher.Stop();
+            }
+            catch
+            {
+                _watcherMenuItem.Checked = wasChecked;
+            }
         };
 
         _autoStartMenuItem = new Forms.ToolStripMenuItem(LocaleService.T("trayAutoStart"))
@@ -115,20 +126,22 @@ public partial class App : System.Windows.Application
         ProcessWatcher.Start();
     }
 
+    private static DateTime _lastWatcherEvent = DateTime.MinValue;
+    private static readonly TimeSpan WatcherThrottle = TimeSpan.FromSeconds(1);
+
     private void OnProcessStarted(object? sender, WatcherEventArgs e)
     {
-        // Offload to thread pool — don't block WMI event thread
+        // Rate limit to prevent thread pool saturation
+        var now = DateTime.UtcNow;
+        if (now - _lastWatcherEvent < WatcherThrottle) return;
+        _lastWatcherEvent = now;
+
         Task.Run(() =>
         {
             try
             {
-                var blockedPrograms = NetworkMonitor.GetConnections() as object; // use caching
-                var blockedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var rule in FirewallService.GetStatus())
-                {
-                    if (!string.IsNullOrWhiteSpace(rule.Program) && Path.IsPathFullyQualified(rule.Program))
-                        blockedSet.Add(Path.GetFullPath(rule.Program));
-                }
+                var blockedSet = NetworkMonitor.GetNetFenceBlockedPrograms();
+                if (blockedSet.Count == 0) return;
 
                 string? parentExe;
                 try
@@ -207,11 +220,15 @@ public partial class App : System.Windows.Application
         var dataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NetFence");
-        var batchPath = Path.Combine(Path.GetTempPath(), "netfence-uninstall.bat");
 
+        // Schedule deletion on next reboot (handles locked files)
+        try { MoveFileEx(dataDir, null, 0x4); } catch { }
+        try { MoveFileEx(appDir, null, 0x4); } catch { }
+
+        var batchPath = Path.Combine(Path.GetTempPath(), "netfence-uninstall.bat");
         var batchContent = string.Join(Environment.NewLine,
             "@echo off",
-            "timeout /t 5 /nobreak >nul",
+            "timeout /t 2 /nobreak >nul",
             $"reg delete \"HKCU\\{AutoStartKey}\" /v \"{AutoStartValue}\" /f 2>nul",
             $"if exist \"{dataDir}\" rmdir /s /q \"{dataDir}\"",
             $"if exist \"{appDir}\" rmdir /s /q \"{appDir}\"",
@@ -228,11 +245,19 @@ public partial class App : System.Windows.Application
         ExitApplication();
     }
 
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern bool MoveFileEx(string lpExistingFileName, string? lpNewFileName, int dwFlags);
+
     private void ExitApplication()
     {
         _isExiting = true;
         ProcessWatcher.Stop();
-        _trayIcon?.Dispose();
+        if (_trayIcon is not null)
+        {
+            _trayIcon.Visible = false;
+            if (_ownsTrayIcon) _trayIcon.Icon?.Dispose();
+            _trayIcon.Dispose();
+        }
         Shutdown();
     }
 }

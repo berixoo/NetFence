@@ -13,6 +13,7 @@ public static class Database
     }.ToString();
 
     private static bool _initialized;
+    private static readonly object _initLock = new();
 
     public static SqliteConnection OpenConnection()
     {
@@ -36,8 +37,11 @@ public static class Database
     private static void EnsureCreated(SqliteConnection conn)
     {
         if (_initialized) return;
+        lock (_initLock)
+        {
+            if (_initialized) return;
 
-        using var cmd = conn.CreateCommand();
+            using var cmd = conn.CreateCommand();
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS RuleProfiles (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,5 +78,6 @@ public static class Database
         try { using var m2 = conn.CreateCommand(); m2.CommandText = "ALTER TABLE RuleProfiles ADD COLUMN AllowedDomainsJson TEXT NOT NULL DEFAULT '[]'"; m2.ExecuteNonQuery(); } catch { }
 
         _initialized = true;
+        }
     }
 }
