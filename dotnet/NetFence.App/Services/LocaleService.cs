@@ -203,6 +203,13 @@ public static class LocaleService
             ["applyMode"] = "Apply Mode",
             ["allowedIpsLabel"] = "Allowed IPs (one per line)",
             ["modeApplied"] = "Mode '{0}' applied.",
+            ["trayShow"] = "Show NetFence",
+            ["trayEnableWatcher"] = "Enable Guardian",
+            ["trayAutoStart"] = "Start with Windows",
+            ["trayUninstall"] = "Uninstall",
+            ["trayExit"] = "Exit",
+            ["trayAutoBlocked"] = "Auto-blocked: {0}",
+            ["uninstallConfirm"] = "Uninstall NetFence? All files and settings will be deleted.",
         },
         ["zh-CN"] = new()
         {
@@ -352,6 +359,13 @@ public static class LocaleService
             ["applyMode"] = "应用模式",
             ["allowedIpsLabel"] = "允许的 IP 地址（每行一个）",
             ["modeApplied"] = "模式 '{0}' 已应用。",
+            ["trayShow"] = "显示 NetFence",
+            ["trayEnableWatcher"] = "启用守护",
+            ["trayAutoStart"] = "开机自启",
+            ["trayUninstall"] = "卸载",
+            ["trayExit"] = "退出",
+            ["trayAutoBlocked"] = "已自动阻断：{0}",
+            ["uninstallConfirm"] = "确定卸载 NetFence？将删除所有文件和配置。",
         }
     };
 }
