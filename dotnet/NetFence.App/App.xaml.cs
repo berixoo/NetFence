@@ -59,30 +59,38 @@ public partial class App : System.Windows.Application
             OperationLog.Write(OperationLog.DefaultPath, "StartupError_TrayIcon", ex.ToString(), []);
         }
 
-        try { StartWatcher(); }
-        catch (Exception ex)
+        // Start watcher on background thread to avoid blocking UI init
+        Task.Run(() =>
         {
-            OperationLog.Write(OperationLog.DefaultPath, "StartupError_Watcher", ex.ToString(), []);
-        }
+            try { StartWatcher(); }
+            catch (Exception ex)
+            {
+                OperationLog.Write(OperationLog.DefaultPath, "StartupError_Watcher", ex.ToString(), []);
+            }
+        });
 
         base.OnStartup(e);
 
-        try
+        if (MainWindow is not MainWindow mw)
         {
-            _mainWindow = (MainWindow)MainWindow;
-            _mainWindow.Closing += (_, args) =>
+            OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow",
+                "MainWindow is null after base.OnStartup. A prior exception during window creation was caught by DispatcherUnhandledException.", []);
+            System.Windows.MessageBox.Show(
+                "NetFence failed to start. Check %LOCALAPPDATA%\\NetFence\\NetFence.log for details.",
+                "NetFence", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
+
+        _mainWindow = mw;
+        _mainWindow.Closing += (_, args) =>
+        {
+            if (!_isExiting)
             {
-                if (!_isExiting)
-                {
-                    args.Cancel = true;
-                    _mainWindow.Hide();
-                }
-            };
-        }
-        catch (Exception ex)
-        {
-            OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow", ex.ToString(), []);
-        }
+                args.Cancel = true;
+                _mainWindow.Hide();
+            }
+        };
     }
 
     private void CreateTrayIcon()
