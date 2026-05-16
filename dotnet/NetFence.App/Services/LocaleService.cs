@@ -201,7 +201,7 @@ public static class LocaleService
             ["modeLanOnly"] = "LAN Only",
             ["modeCustom"] = "Custom IP/Domain",
             ["applyMode"] = "Apply Mode",
-            ["allowedIpsLabel"] = "Allowed IPs/Domains (one per line)",
+            ["allowedIpsLabel"] = "Allowed IPs (one per line)",
             ["modeApplied"] = "Mode '{0}' applied.",
         },
         ["zh-CN"] = new()
@@ -350,7 +350,7 @@ public static class LocaleService
             ["modeLanOnly"] = "仅局域网",
             ["modeCustom"] = "指定IP/域名",
             ["applyMode"] = "应用模式",
-            ["allowedIpsLabel"] = "允许的 IP/域名（每行一个）",
+            ["allowedIpsLabel"] = "允许的 IP 地址（每行一个）",
             ["modeApplied"] = "模式 '{0}' 已应用。",
         }
     };

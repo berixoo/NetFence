@@ -140,7 +140,14 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                 return;
             }
 
-            FirewallService.Block(firstPath, profile.Name, false, profile.Programs);
+            var targets = new List<string>();
+            foreach (var p in profile.Paths)
+            { try { targets.AddRange(NetFenceTargets.GetExecutableTargets(p)); } catch { } }
+            targets.AddRange(profile.Programs.Where(File.Exists));
+
+            var mode = FirewallModeService.KeyToMode(profile.Mode);
+            FirewallModeService.ApplyMode(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
+                mode, profile.AllowedIps, profile.AllowedDomains);
             System.Windows.MessageBox.Show(
                 LocaleService.T("profileLoaded"), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -188,7 +195,8 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                 name = profile.Name,
                 paths = profile.Paths,
                 programs = profile.Programs,
-                mode = profile.Mode
+                mode = profile.Mode,
+                allowedIps = profile.AllowedIps
             };
             File.WriteAllText(dialog.FileName,
                 JsonSerializer.Serialize(exportObj, new JsonSerializerOptions { WriteIndented = true }));
@@ -233,8 +241,14 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                     programs.Add(p.GetString() ?? "");
             }
             var mode = root.TryGetProperty("mode", out var m) ? m.GetString() ?? "block_all" : "block_all";
+            var allowedIps = new List<string>();
+            if (root.TryGetProperty("allowedIps", out var aip))
+            {
+                foreach (var ip in aip.EnumerateArray())
+                    allowedIps.Add(ip.GetString() ?? "");
+            }
 
-            RuleProfileStore.Save(name, paths, programs, mode);
+            RuleProfileStore.Save(name, paths, programs, mode, allowedIps, new List<string>());
             OperationHistoryStore.Record("Import", name, paths.Count + programs.Count);
             Refresh();
             System.Windows.MessageBox.Show(
