@@ -9,3 +9,4 @@ dist/
 *.zip
 dotnet/**/bin/
 dotnet/**/obj/
+.superpowers/
