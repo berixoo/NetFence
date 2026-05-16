@@ -94,28 +94,11 @@ public partial class App : System.Windows.Application
 
         _watcherMenuItem = new Forms.ToolStripMenuItem(LocaleService.T("trayEnableWatcher"))
             { Checked = true };
-        _watcherMenuItem.Click += (_, _) =>
-        {
-            var wasChecked = _watcherMenuItem.Checked;
-            _watcherMenuItem.Checked = !wasChecked;
-            try
-            {
-                if (_watcherMenuItem.Checked) StartWatcher();
-                else ProcessWatcher.Stop();
-            }
-            catch
-            {
-                _watcherMenuItem.Checked = wasChecked;
-            }
-        };
+        _watcherMenuItem.Click += (_, _) => SyncWatcherToggle(!_watcherMenuItem.Checked);
 
         _autoStartMenuItem = new Forms.ToolStripMenuItem(LocaleService.T("trayAutoStart"))
             { Checked = IsAutoStartEnabled() };
-        _autoStartMenuItem.Click += (_, _) =>
-        {
-            _autoStartMenuItem.Checked = !_autoStartMenuItem.Checked;
-            SetAutoStart(_autoStartMenuItem.Checked);
-        };
+        _autoStartMenuItem.Click += (_, _) => SyncAutoStartToggle(!_autoStartMenuItem.Checked);
 
         var strip = new Forms.ContextMenuStrip();
         strip.Items.AddRange(new Forms.ToolStripItem[]
@@ -195,6 +178,24 @@ public partial class App : System.Windows.Application
         });
     }
 
+    public void SyncWatcherToggle(bool enabled)
+    {
+        if (_watcherMenuItem is not null) _watcherMenuItem.Checked = enabled;
+        try
+        {
+            if (enabled) StartWatcher();
+            else ProcessWatcher.Stop();
+        }
+        catch { if (_watcherMenuItem is not null) _watcherMenuItem.Checked = !enabled; }
+    }
+
+    public void SyncAutoStartToggle(bool enabled)
+    {
+        if (_autoStartMenuItem is not null) _autoStartMenuItem.Checked = enabled;
+        try { SetAutoStart(enabled); }
+        catch { if (_autoStartMenuItem is not null) _autoStartMenuItem.Checked = !enabled; }
+    }
+
     private void ShowMainWindow()
     {
         if (_mainWindow is null) return;
@@ -229,7 +230,7 @@ public partial class App : System.Windows.Application
         catch { }
     }
 
-    private void Uninstall()
+    public void Uninstall()
     {
         var result = System.Windows.MessageBox.Show(
             LocaleService.T("uninstallConfirm"), "NetFence",

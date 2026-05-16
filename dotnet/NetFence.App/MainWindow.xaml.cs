@@ -39,6 +39,12 @@ public partial class MainWindow : Window
         _scanBlockPage = new ScanBlockPage();
         var settingsPage = new SettingsPage();
         settingsPage.OpenLogRequested += () => Dispatcher.Invoke(() => ScanBlockPage.OpenLog());
+        settingsPage.UninstallRequested += () => Dispatcher.Invoke(() =>
+            ((App)System.Windows.Application.Current).Uninstall());
+        settingsPage.WatcherToggled += enabled => Dispatcher.Invoke(() =>
+            ((App)System.Windows.Application.Current).SyncWatcherToggle(enabled));
+        settingsPage.AutoStartToggled += enabled => Dispatcher.Invoke(() =>
+            ((App)System.Windows.Application.Current).SyncAutoStartToggle(enabled));
 
         _pages["ScanBlock"] = _scanBlockPage;
         _pages["NetworkMonitor"] = new NetworkMonitorPage();

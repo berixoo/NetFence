@@ -210,6 +210,13 @@ public static class LocaleService
             ["trayExit"] = "Exit",
             ["trayAutoBlocked"] = "Auto-blocked: {0}",
             ["uninstallConfirm"] = "Uninstall NetFence? All files and settings will be deleted.",
+            ["sectionAppearance"] = "Appearance",
+            ["sectionGuardian"] = "Guardian",
+            ["sectionSystem"] = "System",
+            ["languageDesc"] = "Interface display language",
+            ["themeDesc"] = "Color theme",
+            ["guardianDesc"] = "Auto-block child processes of blocked programs",
+            ["autoStartDesc"] = "Launch NetFence when Windows starts",
         },
         ["zh-CN"] = new()
         {
@@ -366,6 +373,13 @@ public static class LocaleService
             ["trayExit"] = "退出",
             ["trayAutoBlocked"] = "已自动阻断：{0}",
             ["uninstallConfirm"] = "确定卸载 NetFence？将删除所有文件和配置。",
+            ["sectionAppearance"] = "外观",
+            ["sectionGuardian"] = "守护",
+            ["sectionSystem"] = "系统",
+            ["languageDesc"] = "界面显示语言",
+            ["themeDesc"] = "颜色主题",
+            ["guardianDesc"] = "自动阻断被禁用程序的子进程",
+            ["autoStartDesc"] = "Windows 启动时自动运行 NetFence",
         }
     };
 }
