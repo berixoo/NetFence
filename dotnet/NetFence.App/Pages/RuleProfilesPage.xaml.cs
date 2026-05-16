@@ -43,6 +43,13 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             SnapActionColumn.Header = LocaleService.T("columnAction");
             SnapTimestampColumn.Header = LocaleService.T("columnUpdated");
             SnapRollbackColumn.Header = LocaleService.T("columnStatus");
+            ModeLabel.Text = LocaleService.T("networkMode");
+            ModeBlockAll.Content = LocaleService.T("modeBlockAll");
+            ModeAllowAll.Content = LocaleService.T("modeAllowAll");
+            ModeLanOnly.Content = LocaleService.T("modeLanOnly");
+            ModeCustom.Content = LocaleService.T("modeCustom");
+            ApplyModeButton.Content = LocaleService.T("applyMode");
+            AllowedIpsLabel.Text = LocaleService.T("allowedIpsLabel");
         });
     }
 
@@ -82,7 +89,11 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             }
 
             var name = $"Profile_{DateTime.Now:yyyyMMdd-HHmmss}";
-            RuleProfileStore.Save(name, paths, programs);
+            var mode = GetSelectedMode();
+            if (mode == "custom") CommitAllowedIps();
+            var allowedIps = GetAllowedIpsFromEditor();
+            RuleProfileStore.Save(name, paths, programs, mode, allowedIps,
+                new List<string>());
             Refresh();
         }
         catch (Exception ex)
@@ -109,6 +120,17 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
 
             var profile = RuleProfileStore.GetById(row.Id);
             if (profile is null) return;
+
+            // Select the mode in dropdown
+            foreach (System.Windows.Controls.ComboBoxItem item in ModeBox.Items)
+            {
+                if (item.Tag is string tag && tag == profile.Mode)
+                {
+                    item.IsSelected = true;
+                    break;
+                }
+            }
+            AllowedIpsBox.Text = string.Join(Environment.NewLine, profile.AllowedIps);
 
             var firstPath = profile.Paths.FirstOrDefault();
             if (firstPath is null || (!File.Exists(firstPath) && !Directory.Exists(firstPath)))
@@ -283,6 +305,76 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
         {
             System.Windows.MessageBox.Show(ex.Message, "NetFence", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ApplyModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (ProfilesGrid.SelectedItem is not ProfileRow row) return;
+            var profile = RuleProfileStore.GetById(row.Id);
+            if (profile is null) return;
+
+            var modeKey = GetSelectedMode();
+            var mode = FirewallModeService.KeyToMode(modeKey);
+            if (modeKey == "custom") CommitAllowedIps();
+
+            var ips = GetAllowedIpsFromEditor();
+            var targets = new List<string>();
+            foreach (var path in profile.Paths)
+            {
+                try { targets.AddRange(NetFenceTargets.GetExecutableTargets(path)); }
+                catch { }
+            }
+            targets.AddRange(profile.Programs.Where(File.Exists));
+
+            if (targets.Count == 0)
+            {
+                System.Windows.MessageBox.Show("No valid targets found.", "NetFence",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            FirewallModeService.ApplyMode(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
+                mode, ips, Array.Empty<string>());
+            System.Windows.MessageBox.Show(
+                LocaleService.T("modeApplied", modeKey), "NetFence",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(ex.Message, "NetFence", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ModeBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var mode = GetSelectedMode();
+        CustomIpPanel.Visibility = mode == "custom"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private string GetSelectedMode() =>
+        (ModeBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "block_all";
+
+    private List<string> GetAllowedIpsFromEditor() =>
+        AllowedIpsBox.Text
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+
+    private void CommitAllowedIps()
+    {
+        if (ProfilesGrid.SelectedItem is not ProfileRow row) return;
+        var profile = RuleProfileStore.GetById(row.Id);
+        if (profile is null) return;
+        var ips = GetAllowedIpsFromEditor();
+        RuleProfileStore.Save(profile.Name, profile.Paths, profile.Programs,
+            "custom", ips, profile.AllowedDomains);
+        Refresh();
     }
 
     public sealed class ProfileRow(RuleProfile p)

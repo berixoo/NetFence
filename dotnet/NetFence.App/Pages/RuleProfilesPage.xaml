@@ -5,6 +5,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -40,8 +42,37 @@
                     BorderBrush="{DynamicResource ButtonSecondaryBorder}"/>
         </StackPanel>
 
+        <!-- Mode selector -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <TextBlock x:Name="ModeLabel" VerticalAlignment="Center"
+                       Foreground="{DynamicResource PrimaryText}" Margin="0,0,6,0"/>
+            <ComboBox x:Name="ModeBox" Width="160" Height="28"
+                      SelectionChanged="ModeBox_SelectionChanged">
+                <ComboBoxItem x:Name="ModeBlockAll" Tag="block_all"/>
+                <ComboBoxItem x:Name="ModeAllowAll" Tag="allow_all"/>
+                <ComboBoxItem x:Name="ModeLanOnly" Tag="lan_only"/>
+                <ComboBoxItem x:Name="ModeCustom" Tag="custom"/>
+            </ComboBox>
+            <Button x:Name="ApplyModeButton" MinWidth="90" Height="28" Margin="8,0,0,0"
+                    Click="ApplyModeButton_Click"
+                    Background="{DynamicResource ButtonPrimaryBackground}"
+                    Foreground="{DynamicResource ButtonPrimaryForeground}" BorderThickness="0"/>
+        </StackPanel>
+
+        <!-- Custom IP/Domain editor -->
+        <StackPanel x:Name="CustomIpPanel" Grid.Row="2" Visibility="Collapsed" Margin="0,0,0,8">
+            <TextBlock x:Name="AllowedIpsLabel" Margin="0,0,0,4"
+                       Foreground="{DynamicResource PrimaryText}"/>
+            <TextBox x:Name="AllowedIpsBox" Height="70" MinHeight="50"
+                     TextWrapping="Wrap" AcceptsReturn="True"
+                     Background="{DynamicResource InputBackground}"
+                     Foreground="{DynamicResource PrimaryText}"
+                     BorderBrush="{DynamicResource BorderColor}"
+                     VerticalScrollBarVisibility="Auto"/>
+        </StackPanel>
+
         <!-- Profiles DataGrid -->
-        <DataGrid x:Name="ProfilesGrid" Grid.Row="1" AutoGenerateColumns="False"
+        <DataGrid x:Name="ProfilesGrid" Grid.Row="3" AutoGenerateColumns="False"
                   CanUserAddRows="False" IsReadOnly="True" Height="140"
                   Background="{DynamicResource ContentBackground}"
                   Foreground="{DynamicResource PrimaryText}"
@@ -62,11 +93,11 @@
         </DataGrid>
 
         <!-- Separator -->
-        <Border Grid.Row="2" Height="1" Margin="0,12,0,8"
+        <Border Grid.Row="4" Height="1" Margin="0,12,0,8"
                 Background="{DynamicResource SeparatorColor}"/>
 
         <!-- Snapshot section header -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,6">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,6">
             <TextBlock x:Name="SnapshotsLabel" FontSize="14" FontWeight="SemiBold"
                        Foreground="{DynamicResource PrimaryText}" VerticalAlignment="Center"/>
             <Button x:Name="RollbackButton" MinWidth="80" Height="28" Margin="8,0,4,0"
@@ -76,7 +107,7 @@
         </StackPanel>
 
         <!-- Snapshots DataGrid -->
-        <DataGrid x:Name="SnapshotsGrid" Grid.Row="4" AutoGenerateColumns="False"
+        <DataGrid x:Name="SnapshotsGrid" Grid.Row="6" AutoGenerateColumns="False"
                   CanUserAddRows="False" IsReadOnly="True"
                   Background="{DynamicResource ContentBackground}"
                   Foreground="{DynamicResource PrimaryText}"

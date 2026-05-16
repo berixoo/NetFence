@@ -195,6 +195,14 @@ public static class LocaleService
             ["disableTaskConfirm"] = "Disable scheduled task '{0}'?",
             ["noExePathAvailable"] = "No executable path available.",
             ["blockedExe"] = "Blocked: {0}",
+            ["networkMode"] = "Network Mode",
+            ["modeBlockAll"] = "Block All",
+            ["modeAllowAll"] = "Allow All",
+            ["modeLanOnly"] = "LAN Only",
+            ["modeCustom"] = "Custom IP/Domain",
+            ["applyMode"] = "Apply Mode",
+            ["allowedIpsLabel"] = "Allowed IPs/Domains (one per line)",
+            ["modeApplied"] = "Mode '{0}' applied.",
         },
         ["zh-CN"] = new()
         {
@@ -336,6 +344,14 @@ public static class LocaleService
             ["disableTaskConfirm"] = "禁用计划任务 '{0}'？",
             ["noExePathAvailable"] = "无可执行文件路径。",
             ["blockedExe"] = "已阻断：{0}",
+            ["networkMode"] = "联网模式",
+            ["modeBlockAll"] = "禁止全部",
+            ["modeAllowAll"] = "允许全部",
+            ["modeLanOnly"] = "仅局域网",
+            ["modeCustom"] = "指定IP/域名",
+            ["applyMode"] = "应用模式",
+            ["allowedIpsLabel"] = "允许的 IP/域名（每行一个）",
+            ["modeApplied"] = "模式 '{0}' 已应用。",
         }
     };
 }
