@@ -43,3 +43,19 @@ public sealed record NetworkConnection(
     int RemotePort,
     string State,
     bool IsBlockedByNetFence);
+
+public sealed record ServiceInfo(
+    string Name,
+    string DisplayName,
+    string Status,
+    string StartMode,
+    string? ExecutablePath,
+    bool IsSystemService);
+
+public sealed record ScheduledTaskInfo(
+    string Name,
+    string Path,
+    string State,
+    string Triggers,
+    string Actions,
+    string? ExecutablePath);
