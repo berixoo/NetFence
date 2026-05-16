@@ -6,6 +6,14 @@ public enum FirewallDirection
     Outbound
 }
 
+public enum NetworkMode
+{
+    BlockAll,
+    AllowAll,
+    LanOnly,
+    Custom
+}
+
 public sealed record ProcessRow(
     int ProcessId,
     int ParentProcessId,

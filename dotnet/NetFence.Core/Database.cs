@@ -68,6 +68,11 @@ public static class Database
             );
             """;
         cmd.ExecuteNonQuery();
+
+        // Migrations: add columns that may not exist in older DBs
+        try { using var m1 = conn.CreateCommand(); m1.CommandText = "ALTER TABLE RuleProfiles ADD COLUMN AllowedIpsJson TEXT NOT NULL DEFAULT '[]'"; m1.ExecuteNonQuery(); } catch { }
+        try { using var m2 = conn.CreateCommand(); m2.CommandText = "ALTER TABLE RuleProfiles ADD COLUMN AllowedDomainsJson TEXT NOT NULL DEFAULT '[]'"; m2.ExecuteNonQuery(); } catch { }
+
         _initialized = true;
     }
 }
