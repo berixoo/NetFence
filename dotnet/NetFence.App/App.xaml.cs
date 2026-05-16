@@ -27,8 +27,8 @@ public partial class App : System.Windows.Application
             try
             {
                 OperationLog.Write(OperationLog.DefaultPath, "UnhandledUiException",
-                    args.Exception.Message, []);
-                System.Windows.MessageBox.Show(args.Exception.Message, "NetFence",
+                    args.Exception.ToString(), []);
+                System.Windows.MessageBox.Show(args.Exception.ToString(), "NetFence Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch { }
@@ -41,26 +41,48 @@ public partial class App : System.Windows.Application
             {
                 try
                 {
-                    OperationLog.Write(OperationLog.DefaultPath, "UnhandledException", ex.Message, []);
+                    OperationLog.Write(OperationLog.DefaultPath, "UnhandledException", ex.ToString(), []);
                 }
                 catch { }
             }
         };
 
-        ThemeService.Apply(SettingsService.Theme);
-        CreateTrayIcon();
-        StartWatcher();
+        try { ThemeService.Apply(SettingsService.Theme); }
+        catch (Exception ex)
+        {
+            OperationLog.Write(OperationLog.DefaultPath, "StartupError_Theme", ex.ToString(), []);
+        }
+
+        try { CreateTrayIcon(); }
+        catch (Exception ex)
+        {
+            OperationLog.Write(OperationLog.DefaultPath, "StartupError_TrayIcon", ex.ToString(), []);
+        }
+
+        try { StartWatcher(); }
+        catch (Exception ex)
+        {
+            OperationLog.Write(OperationLog.DefaultPath, "StartupError_Watcher", ex.ToString(), []);
+        }
+
         base.OnStartup(e);
 
-        _mainWindow = (MainWindow)MainWindow;
-        _mainWindow.Closing += (_, args) =>
+        try
         {
-            if (!_isExiting)
+            _mainWindow = (MainWindow)MainWindow;
+            _mainWindow.Closing += (_, args) =>
             {
-                args.Cancel = true;
-                _mainWindow.Hide();
-            }
-        };
+                if (!_isExiting)
+                {
+                    args.Cancel = true;
+                    _mainWindow.Hide();
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow", ex.ToString(), []);
+        }
     }
 
     private void CreateTrayIcon()
