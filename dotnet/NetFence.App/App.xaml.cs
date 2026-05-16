@@ -16,6 +16,7 @@ public partial class App : System.Windows.Application
     private Forms.ToolStripMenuItem? _autoStartMenuItem;
     private bool _isExiting;
     private bool _ownsTrayIcon;
+    private static string? _lastDispatcherError;
 
     private const string AutoStartKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AutoStartValue = "NetFence";
@@ -24,15 +25,14 @@ public partial class App : System.Windows.Application
     {
         DispatcherUnhandledException += (_, args) =>
         {
+            _lastDispatcherError = args.Exception.ToString();
             try
             {
                 OperationLog.Write(OperationLog.DefaultPath, "UnhandledUiException",
                     args.Exception.ToString(), []);
-                System.Windows.MessageBox.Show(args.Exception.ToString(), "NetFence Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch { }
-            args.Handled = true;
+            // Do NOT mark as handled — let the exception propagate so it can be caught by try/catch
         };
 
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -85,8 +85,16 @@ public partial class App : System.Windows.Application
 
         if (MainWindow is not MainWindow mw)
         {
+            var detail = _lastDispatcherError ?? "(no dispatcher error captured)";
             OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow",
-                "MainWindow is null after base.OnStartup (no exception thrown).", []);
+                $"MainWindow is null. Dispatcher error: {detail}", []);
+            try
+            {
+                System.Windows.MessageBox.Show(
+                    $"MainWindow creation failed.\n\n{detail}",
+                    "NetFence Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch { }
             Shutdown();
             return;
         }
