@@ -69,15 +69,24 @@ public partial class App : System.Windows.Application
             }
         });
 
-        base.OnStartup(e);
+        try
+        {
+            base.OnStartup(e);
+        }
+        catch (Exception ex)
+        {
+            var msg = $"Window creation failed: {ex}";
+            OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow", msg, []);
+            try { System.Windows.MessageBox.Show(msg, "NetFence Startup Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch { }
+            Shutdown();
+            return;
+        }
 
         if (MainWindow is not MainWindow mw)
         {
             OperationLog.Write(OperationLog.DefaultPath, "StartupError_MainWindow",
-                "MainWindow is null after base.OnStartup. A prior exception during window creation was caught by DispatcherUnhandledException.", []);
-            System.Windows.MessageBox.Show(
-                "NetFence failed to start. Check %LOCALAPPDATA%\\NetFence\\NetFence.log for details.",
-                "NetFence", MessageBoxButton.OK, MessageBoxImage.Error);
+                "MainWindow is null after base.OnStartup (no exception thrown).", []);
             Shutdown();
             return;
         }
