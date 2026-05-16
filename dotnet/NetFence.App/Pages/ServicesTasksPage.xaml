@@ -1,9 +1,147 @@
 <UserControl x:Class="NetFence.App.Pages.ServicesTasksPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Background="{DynamicResource ContentBackground}">
-        <TextBlock x:Name="PlaceholderText" FontSize="16"
-                   Foreground="{DynamicResource MutedText}"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Grid Margin="16" Background="{DynamicResource ContentBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="TargetPathLabel" VerticalAlignment="Center"
+                       Foreground="{DynamicResource PrimaryText}"/>
+            <TextBox x:Name="PathBox" Grid.Column="1" Height="30" Margin="0,0,8,0"
+                     VerticalContentAlignment="Center"
+                     Background="{DynamicResource InputBackground}"
+                     Foreground="{DynamicResource PrimaryText}"
+                     BorderBrush="{DynamicResource BorderColor}"/>
+            <Button x:Name="ScanButton" Grid.Column="2" MinWidth="100" Height="30"
+                    Click="ScanButton_Click"
+                    Background="{DynamicResource ButtonPrimaryBackground}"
+                    Foreground="{DynamicResource ButtonPrimaryForeground}" BorderThickness="0"/>
+        </Grid>
+
+        <TabControl Grid.Row="1" Background="{DynamicResource ContentBackground}"
+                    BorderBrush="{DynamicResource BorderColor}">
+            <TabControl.Resources>
+                <Style TargetType="TabPanel">
+                    <Setter Property="Background" Value="{DynamicResource PanelBackground}"/>
+                </Style>
+                <Style TargetType="TabItem">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TabInactiveText}"/>
+                    <Setter Property="Padding" Value="14,7"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border Name="TabBorder" Background="Transparent"
+                                        BorderThickness="0,0,0,2" BorderBrush="Transparent"
+                                        Padding="{TemplateBinding Padding}" Cursor="Hand">
+                                    <ContentPresenter ContentSource="Header"
+                                                      HorizontalAlignment="Center"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="TabBorder" Property="BorderBrush"
+                                                Value="{DynamicResource TabSelectedUnderline}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- Services tab -->
+            <TabItem>
+                <TabItem.Header><TextBlock x:Name="ServicesTabHeader"/></TabItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DataGrid x:Name="ServicesGrid" AutoGenerateColumns="False"
+                              CanUserAddRows="False" IsReadOnly="True"
+                              Background="{DynamicResource ContentBackground}"
+                              Foreground="{DynamicResource PrimaryText}"
+                              AlternatingRowBackground="{DynamicResource GridRowAlt}"
+                              BorderBrush="{DynamicResource BorderColor}"
+                              ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
+                        <DataGrid.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn x:Name="SvcNameCol" Binding="{Binding Name}" Width="140"/>
+                            <DataGridTextColumn x:Name="SvcDispCol" Binding="{Binding DisplayName}" Width="200"/>
+                            <DataGridTextColumn x:Name="SvcStatusCol" Binding="{Binding Status}" Width="80"/>
+                            <DataGridTextColumn x:Name="SvcStartCol" Binding="{Binding StartMode}" Width="80"/>
+                            <DataGridTextColumn x:Name="SvcPathCol" Binding="{Binding ExecutablePath}" Width="300"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button x:Name="StopServiceButton" MinWidth="100" Height="28" Margin="0,0,8,0"
+                                Click="StopServiceButton_Click"
+                                Background="{DynamicResource ButtonDangerBackground}"
+                                Foreground="{DynamicResource ButtonDangerForeground}" BorderThickness="0"/>
+                        <Button x:Name="DisableServiceButton" MinWidth="110" Height="28"
+                                Click="DisableServiceButton_Click"
+                                Background="{DynamicResource ButtonSecondaryBackground}"
+                                Foreground="{DynamicResource ButtonSecondaryForeground}"
+                                BorderBrush="{DynamicResource ButtonSecondaryBorder}"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Tasks tab -->
+            <TabItem>
+                <TabItem.Header><TextBlock x:Name="TasksTabHeader"/></TabItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DataGrid x:Name="TasksGrid" AutoGenerateColumns="False"
+                              CanUserAddRows="False" IsReadOnly="True"
+                              Background="{DynamicResource ContentBackground}"
+                              Foreground="{DynamicResource PrimaryText}"
+                              AlternatingRowBackground="{DynamicResource GridRowAlt}"
+                              BorderBrush="{DynamicResource BorderColor}"
+                              ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
+                        <DataGrid.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn x:Name="TaskNameCol" Binding="{Binding Name}" Width="160"/>
+                            <DataGridTextColumn x:Name="TaskPathCol" Binding="{Binding Path}" Width="140"/>
+                            <DataGridTextColumn x:Name="TaskStateCol" Binding="{Binding State}" Width="80"/>
+                            <DataGridTextColumn x:Name="TaskTriggersCol" Binding="{Binding Triggers}" Width="130"/>
+                            <DataGridTextColumn x:Name="TaskActionsCol" Binding="{Binding Actions}" Width="300"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button x:Name="DisableTaskButton" MinWidth="100" Height="28" Margin="0,0,8,0"
+                                Click="DisableTaskButton_Click"
+                                Background="{DynamicResource ButtonDangerBackground}"
+                                Foreground="{DynamicResource ButtonDangerForeground}" BorderThickness="0"/>
+                        <Button x:Name="BlockTaskExeButton" MinWidth="110" Height="28"
+                                Click="BlockTaskExeButton_Click"
+                                Background="{DynamicResource ButtonSecondaryBackground}"
+                                Foreground="{DynamicResource ButtonSecondaryForeground}"
+                                BorderBrush="{DynamicResource ButtonSecondaryBorder}"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>
