@@ -30,11 +30,9 @@ public static class PowerShellRunner
             startInfo.ArgumentList.Add(scriptPath);
 
             using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start powershell.exe.");
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
             process.WaitForExit();
-            var output = outputTask.GetAwaiter().GetResult();
-            var error = errorTask.GetAwaiter().GetResult();
             return new CommandResult(process.ExitCode, output, error);
         }
         finally

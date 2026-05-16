@@ -191,6 +191,10 @@ public static class LocaleService
             ["disableServiceConfirm"] = "Disable auto-start for service '{0}'?",
             ["systemServiceProtected"] = "System service — cannot modify.",
             ["noServicesFound"] = "No related services or tasks found.",
+            ["taskDisabled"] = "Task disabled.",
+            ["disableTaskConfirm"] = "Disable scheduled task '{0}'?",
+            ["noExePathAvailable"] = "No executable path available.",
+            ["blockedExe"] = "Blocked: {0}",
         },
         ["zh-CN"] = new()
         {
@@ -328,6 +332,10 @@ public static class LocaleService
             ["disableServiceConfirm"] = "禁用服务 '{0}' 的自启动？",
             ["systemServiceProtected"] = "系统服务，不可修改。",
             ["noServicesFound"] = "未发现关联服务或计划任务。",
+            ["taskDisabled"] = "任务已禁用。",
+            ["disableTaskConfirm"] = "禁用计划任务 '{0}'？",
+            ["noExePathAvailable"] = "无可执行文件路径。",
+            ["blockedExe"] = "已阻断：{0}",
         }
     };
 }

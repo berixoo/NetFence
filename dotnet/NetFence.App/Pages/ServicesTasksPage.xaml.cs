@@ -84,7 +84,8 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 LocaleService.T("stopServiceConfirm", svc.Name), "NetFence",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
-            Task.Run(() => ServiceScanner.StopService(svc.Name));
+            Task.Run(() =>
+            { try { ServiceScanner.StopService(svc.Name); } catch { } });
         }
         catch (Exception ex)
         {
@@ -102,7 +103,8 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 LocaleService.T("disableServiceConfirm", svc.Name), "NetFence",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
-            Task.Run(() => ServiceScanner.DisableService(svc.Name));
+            Task.Run(() =>
+            { try { ServiceScanner.DisableService(svc.Name); } catch { } });
         }
         catch (Exception ex)
         {
@@ -115,9 +117,16 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
         try
         {
             if (TasksGrid.SelectedItem is not ScheduledTaskInfo task) return;
-            var fullPath = task.Path.TrimEnd('\\') + "\\" + task.Name;
-            Task.Run(() => ServiceScanner.DisableScheduledTask(fullPath));
-            System.Windows.MessageBox.Show("Task disabled.", "NetFence",
+            var confirm = System.Windows.MessageBox.Show(
+                LocaleService.T("disableTaskConfirm", task.Name), "NetFence",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+            Task.Run(() =>
+            {
+                try { ServiceScanner.DisableScheduledTask(task.Path, task.Name); }
+                catch { }
+            });
+            System.Windows.MessageBox.Show(LocaleService.T("taskDisabled"), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -133,15 +142,17 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
             if (TasksGrid.SelectedItem is not ScheduledTaskInfo task) return;
             if (string.IsNullOrWhiteSpace(task.ExecutablePath))
             {
-                System.Windows.MessageBox.Show("No executable path available.", "NetFence",
+                System.Windows.MessageBox.Show(LocaleService.T("noExePathAvailable"), "NetFence",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             var exePath = task.ExecutablePath;
-            Task.Run(() => FirewallService.Block(exePath,
-                System.IO.Path.GetFileNameWithoutExtension(exePath),
-                false, Array.Empty<string>()));
-            System.Windows.MessageBox.Show($"Blocked: {exePath}", "NetFence",
+            Task.Run(() =>
+            {
+                try { FirewallService.Block(exePath, System.IO.Path.GetFileNameWithoutExtension(exePath),
+                    false, Array.Empty<string>()); } catch { }
+            });
+            System.Windows.MessageBox.Show(LocaleService.T("blockedExe", exePath), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)

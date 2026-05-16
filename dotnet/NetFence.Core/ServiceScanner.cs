@@ -5,7 +5,7 @@ namespace NetFence.Core;
 
 public static class ServiceScanner
 {
-    private static readonly HashSet<string> SystemServices = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> SystemServiceExes = new(StringComparer.OrdinalIgnoreCase)
     {
         "svchost.exe", "lsass.exe", "wininit.exe", "services.exe",
         "csrss.exe", "smss.exe", "winlogon.exe", "explorer.exe",
@@ -19,10 +19,16 @@ public static class ServiceScanner
             throw new InvalidOperationException($"Path not found: {targetPath}");
 
         var installDir = Directory.Exists(targetPath) ? targetPath : Path.GetDirectoryName(targetPath)!;
+        var targetName = Path.GetFileName(targetPath);
         var results = new List<ServiceInfo>();
 
         foreach (var svc in ServiceController.GetServices())
         {
+            // Skip kernel drivers, file-system drivers, adapters
+            if (svc.ServiceType != ServiceType.Win32OwnProcess &&
+                svc.ServiceType != ServiceType.Win32ShareProcess)
+                continue;
+
             try
             {
                 var exePath = GetServiceImagePath(svc.ServiceName);
@@ -35,21 +41,20 @@ public static class ServiceScanner
                 }
 
                 if (!isRelated &&
-                    (svc.ServiceName.Contains(Path.GetFileName(targetPath), StringComparison.OrdinalIgnoreCase) ||
+                    (svc.ServiceName.Contains(targetName, StringComparison.OrdinalIgnoreCase) ||
                      svc.DisplayName.Contains(Path.GetFileName(installDir), StringComparison.OrdinalIgnoreCase)))
                     isRelated = true;
 
                 if (!isRelated) continue;
 
-                var exeName = exePath is not null ? Path.GetFileName(exePath) : null;
-                var isSystem = exeName is not null && SystemServices.Contains(exeName);
+                var isSystem = DetermineIsSystem(svc, exePath);
 
                 results.Add(new ServiceInfo(
                     svc.ServiceName, svc.DisplayName,
-                    svc.Status.ToString(), svc.StartType.ToString(),
+                    svc.Status.ToString(), GetEffectiveStartMode(svc),
                     exePath, isSystem));
             }
-            catch { }
+            catch (Exception) { /* skip unreadable service */ }
         }
 
         return results.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToArray();
@@ -67,6 +72,43 @@ public static class ServiceScanner
     {
         PowerShellRunner.RunRequired(
             $"Set-Service -Name {PowerShellRunner.Quote(serviceName)} -StartupType Disabled");
+    }
+
+    private static bool DetermineIsSystem(ServiceController svc, string? exePath)
+    {
+        // Check by known system executable names
+        var exeName = exePath is not null ? Path.GetFileName(exePath) : null;
+        if (exeName is not null && SystemServiceExes.Contains(exeName))
+            return true;
+        // If we couldn't read the image path due to access denial, treat as system
+        if (exePath is null && exeName is null)
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(
+                    @$"SYSTEM\CurrentControlSet\Services\{svc.ServiceName}");
+                if (key is null) return false;
+                var imagePath = key.GetValue("ImagePath") as string;
+                // Key exists but value access denied — likely protected
+                return imagePath is null;
+            }
+            catch { return true; }
+        }
+        return false;
+    }
+
+    private static string GetEffectiveStartMode(ServiceController svc)
+    {
+        var mode = svc.StartType.ToString();
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(
+                @$"SYSTEM\CurrentControlSet\Services\{svc.ServiceName}");
+            if (key?.GetValue("DelayedAutoStart") is int delayed && delayed == 1)
+                mode += " (Delayed)";
+        }
+        catch { }
+        return mode;
     }
 
     private static string? GetServiceImagePath(string serviceName)
@@ -98,35 +140,28 @@ public static class ServiceScanner
             throw new InvalidOperationException($"Path not found: {targetPath}");
 
         var installDir = Directory.Exists(targetPath) ? targetPath : Path.GetDirectoryName(targetPath)!;
-        var escapedDir = installDir.Replace("'", "''");
+        var escapedDir = EscapePowerShellWildcards(installDir);
 
-        var script = $$"""
-            $ErrorActionPreference = 'Stop'
-            Get-ScheduledTask -ErrorAction SilentlyContinue |
-                ForEach-Object {
-                    $task = $_
-                    $actions = @($task.Actions | ForEach-Object { $_.Execute + ' ' + ($_.Arguments ?? '') })
-                    $actionText = $actions -join '; '
-                    $triggers = @($task.Triggers | ForEach-Object { $_.CimClass.CimClassName } | Select-Object -Unique)
-                    $triggerText = $triggers -join ', '
-                    [PSCustomObject]@{
-                        Name = $task.TaskName
-                        Path = $task.TaskPath
-                        State = [string]$task.State
-                        Triggers = $triggerText
-                        Actions = $actionText
-                        ExecutablePath = [string]$task.Actions[0].Execute
-                    }
-                } |
-                Where-Object {
-                    $_.ExecutablePath -like '*{{escapedDir}}*' -or
-                    $_.Actions -like '*updater*' -or
-                    $_.Actions -like '*update*' -or
-                    $_.Actions -like '*helper*' -or
-                    $_.Actions -like '*launcher*'
-                } |
-                ConvertTo-Csv -NoTypeInformation
-            """;
+        var script = string.Join(Environment.NewLine,
+            "$ErrorActionPreference = 'Stop'",
+            "Get-ScheduledTask -ErrorAction SilentlyContinue |",
+            "    ForEach-Object {",
+            "        $task = $_",
+            "        $actions = @($task.Actions | ForEach-Object { $_.Execute + ' ' + ($_.Arguments ?? '') })",
+            "        $actionText = $actions -join '; '",
+            "        $triggers = @($task.Triggers | ForEach-Object { $_.CimClass.CimClassName } | Select-Object -Unique)",
+            "        $triggerText = $triggers -join ', '",
+            "        [PSCustomObject]@{",
+            "            Name = $task.TaskName",
+            "            Path = $task.TaskPath",
+            "            State = [string]$task.State",
+            "            Triggers = $triggerText",
+            "            Actions = $actionText",
+            "            ExecutablePath = [string]$task.Actions[0].Execute",
+            "        }",
+            "    } |",
+            $"    Where-Object {{ $_.ExecutablePath -like '*{escapedDir}*' }} |",
+            "    ConvertTo-Csv -NoTypeInformation");
 
         return LiveSystemInfo.ParseCsv(PowerShellRunner.RunRequired(script))
             .Select(row => new ScheduledTaskInfo(
@@ -139,10 +174,21 @@ public static class ServiceScanner
             .ToArray();
     }
 
-    public static void DisableScheduledTask(string taskPath)
+    public static void DisableScheduledTask(string taskPath, string taskName)
     {
         PowerShellRunner.RunRequired(
-            $"Disable-ScheduledTask -TaskPath {PowerShellRunner.Quote(taskPath)}");
+            $"Disable-ScheduledTask -TaskPath {PowerShellRunner.Quote(taskPath)} -TaskName {PowerShellRunner.Quote(taskName)}");
+    }
+
+    private static string EscapePowerShellWildcards(string value)
+    {
+        return value
+            .Replace("`", "``")
+            .Replace("'", "''")
+            .Replace("[", "`[")
+            .Replace("]", "`]")
+            .Replace("*", "`*")
+            .Replace("?", "`?");
     }
 
     private static string? EmptyToNull(string? v) => string.IsNullOrWhiteSpace(v) ? null : v;
