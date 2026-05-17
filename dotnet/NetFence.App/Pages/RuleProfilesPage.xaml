@@ -94,39 +94,5 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Separator -->
-        <Border Grid.Row="4" Height="1" Margin="0,12,0,8"
-                Background="{DynamicResource SeparatorColor}"/>
-
-        <!-- Snapshot section header -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,6">
-            <TextBlock x:Name="SnapshotsLabel" FontSize="14" FontWeight="SemiBold"
-                       Foreground="{DynamicResource PrimaryText}" VerticalAlignment="Center"/>
-            <Button x:Name="RollbackButton" MinWidth="80" Height="28" Margin="8,0,4,0"
-                    Click="RollbackButton_Click"
-                    Background="{DynamicResource ButtonDangerBackground}"
-                    Foreground="{DynamicResource ButtonDangerForeground}" BorderThickness="0"/>
-        </StackPanel>
-
-        <!-- Snapshots DataGrid -->
-        <DataGrid x:Name="SnapshotsGrid" Grid.Row="6" AutoGenerateColumns="False"
-                  CanUserAddRows="False" IsReadOnly="True"
-                  Background="{DynamicResource ContentBackground}"
-                  Foreground="{DynamicResource PrimaryText}"
-                  AlternatingRowBackground="{DynamicResource GridRowAlt}"
-                  BorderBrush="{DynamicResource BorderColor}"
-                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
-            <DataGrid.Resources>
-                <Style TargetType="TextBlock">
-                    <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
-                </Style>
-            </DataGrid.Resources>
-            <DataGrid.Columns>
-                <DataGridTextColumn x:Name="SnapProfileColumn" Binding="{Binding ProfileName}" Width="120"/>
-                <DataGridTextColumn x:Name="SnapActionColumn" Binding="{Binding Action}" Width="120"/>
-                <DataGridTextColumn x:Name="SnapTimestampColumn" Binding="{Binding Timestamp}" Width="200"/>
-                <DataGridTextColumn x:Name="SnapRollbackColumn" Binding="{Binding RollbackDisplay}" Width="90"/>
-            </DataGrid.Columns>
-        </DataGrid>
     </Grid>
 </UserControl>

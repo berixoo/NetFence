@@ -28,6 +28,12 @@ public sealed record RelatedCandidate(
     int ProcessId,
     string ProcessName);
 
+public sealed record FirewallOperationResult(
+    string ProfileName,
+    int SuccessCount,
+    int FailureCount,
+    List<string> FailedTargets);
+
 public sealed record FirewallRuleInfo(
     string ProfileName,
     string DisplayName,

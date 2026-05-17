@@ -3,11 +3,65 @@ using System.Text;
 
 namespace NetFence.Core;
 
-public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
+public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError,
+    bool TimedOut = false, bool Canceled = false);
 
 public static class PowerShellRunner
 {
+    private static readonly SemaphoreSlim GlobalLock = new(1, 1);
+
     public static CommandResult Run(string script)
+    {
+        return RunInternal(script, Timeout.InfiniteTimeSpan, CancellationToken.None);
+    }
+
+    public static async Task<CommandResult> RunAsync(string script,
+        TimeSpan timeout, CancellationToken cancel = default)
+    {
+        return await Task.Run(() => RunInternal(script, timeout, cancel), cancel);
+    }
+
+    public static string RunRequired(string script)
+    {
+        var result = Run(script);
+        ThrowIfFailed(result);
+        return result.StandardOutput;
+    }
+
+    public static async Task<string> RunRequiredAsync(string script,
+        TimeSpan timeout, CancellationToken cancel = default)
+    {
+        var result = await RunAsync(script, timeout, cancel);
+        ThrowIfFailed(result);
+        return result.StandardOutput;
+    }
+
+    /// <summary>Serialise all firewall-modifying operations to prevent PowerShell flood.</summary>
+    public static async Task<T> QueueFirewallOp<T>(Func<Task<T>> operation)
+    {
+        await GlobalLock.WaitAsync();
+        try { return await operation(); }
+        finally { GlobalLock.Release(); }
+    }
+
+    public static async Task QueueFirewallOp(Func<Task> operation) =>
+        await QueueFirewallOp<object?>(async () => { await operation(); return null; });
+
+    public static string Quote(string value) => "'" + value.Replace("'", "''") + "'";
+
+    private static void ThrowIfFailed(CommandResult result)
+    {
+        if (result.TimedOut) throw new TimeoutException("PowerShell command timed out.");
+        if (result.Canceled) throw new OperationCanceledException("PowerShell command was canceled.");
+        if (result.ExitCode != 0)
+        {
+            var message = string.IsNullOrWhiteSpace(result.StandardError)
+                ? result.StandardOutput : result.StandardError;
+            throw new InvalidOperationException(message.Trim());
+        }
+    }
+
+    private static CommandResult RunInternal(string script, TimeSpan timeout, CancellationToken cancel)
     {
         var scriptPath = WriteTemporaryScript(script);
         try
@@ -29,38 +83,47 @@ public static class PowerShellRunner
             startInfo.ArgumentList.Add("-File");
             startInfo.ArgumentList.Add(scriptPath);
 
-            using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start powershell.exe.");
-            // Read stdout and stderr concurrently to avoid pipe-buffer deadlock
-            var outputTcs = new TaskCompletionSource<string>();
-            var errorTcs = new TaskCompletionSource<string>();
-            ThreadPool.QueueUserWorkItem(_ => outputTcs.TrySetResult(process.StandardOutput.ReadToEnd()));
-            ThreadPool.QueueUserWorkItem(_ => errorTcs.TrySetResult(process.StandardError.ReadToEnd()));
-            process.WaitForExit();
-            var output = outputTcs.Task.GetAwaiter().GetResult();
-            var error = errorTcs.Task.GetAwaiter().GetResult();
-            return new CommandResult(process.ExitCode, output, error);
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start powershell.exe.");
+
+            var output = new StringBuilder();
+            var error = new StringBuilder();
+            var outputDone = new ManualResetEventSlim();
+            var errorDone = new ManualResetEventSlim();
+
+            process.OutputDataReceived += (_, e) => { if (e.Data is not null) output.AppendLine(e.Data); };
+            process.ErrorDataReceived += (_, e) => { if (e.Data is not null) error.AppendLine(e.Data); };
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            bool timedOut = false;
+            bool canceled = false;
+
+            if (timeout == Timeout.InfiniteTimeSpan && cancel == CancellationToken.None)
+            {
+                process.WaitForExit();
+            }
+            else
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+                cts.CancelAfter(timeout);
+                try { process.WaitForExitAsync(cts.Token).GetAwaiter().GetResult(); }
+                catch (OperationCanceledException)
+                {
+                    canceled = cancel.IsCancellationRequested;
+                    timedOut = !canceled;
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                }
+            }
+
+            process.WaitForExit(); // ensure async output events complete
+            outputDone.Wait(TimeSpan.FromSeconds(2));
+            errorDone.Wait(TimeSpan.FromSeconds(2));
+
+            return new CommandResult(process.ExitCode, output.ToString(), error.ToString(), timedOut, canceled);
         }
-        finally
-        {
-            TryDelete(scriptPath);
-        }
+        finally { TryDelete(scriptPath); }
     }
-
-    public static string RunRequired(string script)
-    {
-        var result = Run(script);
-        if (result.ExitCode != 0)
-        {
-            var message = string.IsNullOrWhiteSpace(result.StandardError)
-                ? result.StandardOutput
-                : result.StandardError;
-            throw new InvalidOperationException(message.Trim());
-        }
-
-        return result.StandardOutput;
-    }
-
-    public static string Quote(string value) => "'" + value.Replace("'", "''") + "'";
 
     private static string GetWindowsPowerShellPath()
     {
@@ -80,17 +143,8 @@ public static class PowerShellRunner
 
     private static void TryDelete(string path)
     {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch
-        {
-            // Temporary script cleanup failure should not hide the command result.
-        }
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch { }
     }
 
     private static string WrapScript(string script) => string.Join(Environment.NewLine,

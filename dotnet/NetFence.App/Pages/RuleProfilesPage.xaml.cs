@@ -11,13 +11,11 @@ namespace NetFence.App.Pages;
 public partial class RuleProfilesPage : System.Windows.Controls.UserControl
 {
     private readonly ObservableCollection<ProfileRow> _profiles = [];
-    private readonly ObservableCollection<SnapshotRow> _snapshots = [];
 
     public RuleProfilesPage()
     {
         InitializeComponent();
         ProfilesGrid.ItemsSource = _profiles;
-        SnapshotsGrid.ItemsSource = _snapshots;
         ApplyLocale();
         LocaleService.LanguageChanged += ApplyLocale;
         Loaded += (_, _) => Refresh();
@@ -33,16 +31,10 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             DeleteProfileButton.Content = LocaleService.T("deleteProfile");
             ExportProfileButton.Content = LocaleService.T("exportProfile");
             ImportProfileButton.Content = LocaleService.T("importProfile");
-            SnapshotsLabel.Text = LocaleService.T("snapshotsSection");
-            RollbackButton.Content = LocaleService.T("rollback");
             ProfileNameColumn.Header = LocaleService.T("columnProfileName");
             ProfilePathsColumn.Header = LocaleService.T("columnPaths");
             ProfileProgramsColumn.Header = LocaleService.T("columnPrograms");
             ProfileUpdatedColumn.Header = LocaleService.T("columnUpdated");
-            SnapProfileColumn.Header = LocaleService.T("columnRule");
-            SnapActionColumn.Header = LocaleService.T("columnAction");
-            SnapTimestampColumn.Header = LocaleService.T("columnUpdated");
-            SnapRollbackColumn.Header = LocaleService.T("columnStatus");
             ModeLabel.Text = LocaleService.T("networkMode");
             ModeBlockAll.Content = LocaleService.T("modeBlockAll");
             ModeAllowAll.Content = LocaleService.T("modeAllowAll");
@@ -59,10 +51,6 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
         _profiles.Clear();
         foreach (var p in RuleProfileStore.ListAll())
             _profiles.Add(new ProfileRow(p));
-
-        _snapshots.Clear();
-        foreach (var s in RuleSnapshotStore.ListRecent(30))
-            _snapshots.Add(new SnapshotRow(s));
     }
 
     private void SaveProfileButton_Click(object sender, RoutedEventArgs e)
@@ -263,71 +251,6 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
         }
     }
 
-    private async void RollbackButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (SnapshotsGrid.SelectedItem is not SnapshotRow row)
-            {
-                System.Windows.MessageBox.Show(LocaleService.T("selectSnapshotFirst"), "NetFence",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var confirm = System.Windows.MessageBox.Show(
-                LocaleService.T("rollbackConfirm"),
-                LocaleService.T("rollbackConfirmTitle"),
-                MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes) return;
-
-            var snapshot = RuleSnapshotStore.GetById(row.Id);
-            if (snapshot is null) return;
-
-            var ruleCount = 0;
-            await Task.Run(() =>
-            {
-                // Remove ALL current NetFence rules before restoring
-                PowerShellRunner.RunRequired(string.Join(Environment.NewLine,
-                    "$ErrorActionPreference = 'Stop'",
-                    "$rules = @(Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Group -like 'NetFence:*' })",
-                    "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
-
-                var rules = JsonSerializer.Deserialize<List<FirewallRuleInfo>>(snapshot.RulesJson) ?? [];
-                ruleCount = rules.Count;
-                foreach (var rule in rules)
-                {
-                    if (string.IsNullOrWhiteSpace(rule.Program) || !Path.IsPathFullyQualified(rule.Program))
-                        continue;
-                    var group = NetFenceRules.GetRuleGroup(rule.ProfileName);
-                    var remotePart = !string.IsNullOrWhiteSpace(rule.RemoteAddress)
-                        ? $"-RemoteAddress {PowerShellRunner.Quote(rule.RemoteAddress)} "
-                        : "";
-                    var script = string.Join(Environment.NewLine,
-                        "$ErrorActionPreference = 'Stop'",
-                        $"New-NetFirewallRule -DisplayName {PowerShellRunner.Quote(rule.DisplayName)} " +
-                        $"-Group {PowerShellRunner.Quote(group)} " +
-                        $"-Direction {rule.Direction} -Action {rule.Action} " +
-                        $"-Program {PowerShellRunner.Quote(rule.Program)} " +
-                        $"-Enabled {rule.Enabled} " +
-                        remotePart +
-                        "-Profile Any | Out-Null");
-                    try { PowerShellRunner.RunRequired(script); }
-                    catch { }
-                }
-            });
-
-            RuleSnapshotStore.MarkRolledBack(row.Id);
-            OperationHistoryStore.Record("Rollback", snapshot.ProfileName, ruleCount);
-            Refresh();
-            System.Windows.MessageBox.Show(
-                LocaleService.T("rollbackComplete"), "NetFence",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show(ex.Message, "NetFence", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
 
     private async void ApplyModeButton_Click(object sender, RoutedEventArgs e)
     {
@@ -409,12 +332,4 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
         public string UpdatedAt => p.UpdatedAt;
     }
 
-    public sealed class SnapshotRow(RuleSnapshot s)
-    {
-        public long Id => s.Id;
-        public string ProfileName => s.ProfileName;
-        public string Action => s.Action;
-        public string Timestamp => s.Timestamp;
-        public string RollbackDisplay => s.IsRollback ? "Rolled back" : "Active";
-    }
 }
