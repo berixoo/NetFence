@@ -30,7 +30,6 @@ public static class FirewallModeService
     {
         var group = NetFenceRules.GetRuleGroup(profileName);
 
-        // Remove existing rules for this profile
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine,
             "$ErrorActionPreference = 'Stop'",
             $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
@@ -41,87 +40,58 @@ public static class FirewallModeService
         switch (mode)
         {
             case NetworkMode.BlockAll:
-                CreateBlockRules(targets, group, profileName, blockInbound: true, blockOutbound: true);
+                BatchCreateRules(targets, group, profileName,
+                    new[] { FirewallDirection.Inbound, FirewallDirection.Outbound }, "Block", null);
                 break;
+
             case NetworkMode.LanOnly:
-                // Allow rules first (matched before Block in evaluation order)
-                CreateAllowRules(targets, group, profileName, LanRanges);
-                // Block only internet (Intranet = 10/8, 172.16/12, 192.168/16)
-                CreateBlockRules(targets, group, profileName, blockInbound: true, blockOutbound: false);
-                CreateInternetBlockRules(targets, group, profileName);
+                // Block Outbound to Internet (allows Intranet: 10/8, 172.16/12, 192.168/16, plus localhost)
+                BatchCreateRules(targets, group, profileName,
+                    new[] { FirewallDirection.Outbound }, "Block", "Internet");
+                // Block Inbound from everywhere
+                BatchCreateRules(targets, group, profileName,
+                    new[] { FirewallDirection.Inbound }, "Block", null);
                 break;
+
             case NetworkMode.Custom:
                 var ips = allowedIps.Where(ip => !string.IsNullOrWhiteSpace(ip)).ToList();
                 if (ips.Count > 0)
                 {
-                    // Allow rules must be created FIRST to match before Block
-                    CreateAllowRules(targets, group, profileName, ips);
+                    var ipList = string.Join(",", ips);
+                    BatchCreateRules(targets, group, profileName,
+                        new[] { FirewallDirection.Outbound }, "Allow", ipList);
                 }
-                CreateBlockRules(targets, group, profileName, blockInbound: true, blockOutbound: true);
+                // Block Inbound from everywhere
+                BatchCreateRules(targets, group, profileName,
+                    new[] { FirewallDirection.Inbound }, "Block", null);
+                // Note: Outbound Block is NOT created in Custom mode because Windows Firewall
+                // gives Block precedence over Allow. Programs can still reach non-allowed
+                // destinations via outbound connections. This is a Windows Firewall limitation.
                 break;
         }
     }
 
-    private static void CreateBlockRules(IEnumerable<string> targets, string group,
-        string profileName, bool blockInbound, bool blockOutbound)
+    private static void BatchCreateRules(IEnumerable<string> targets, string group,
+        string profileName, FirewallDirection[] directions, string action, string? remoteAddress)
     {
-        var directions = new List<FirewallDirection>();
-        if (blockInbound) directions.Add(FirewallDirection.Inbound);
-        if (blockOutbound) directions.Add(FirewallDirection.Outbound);
-
         var scriptLines = new List<string> { "$ErrorActionPreference = 'Stop'" };
         foreach (var target in targets)
         {
             foreach (var direction in directions)
             {
-                var displayName = NetFenceRules.GetRuleName(profileName, target, direction);
+                var suffix = remoteAddress is not null ? $"_{action}_{remoteAddress.Replace(",", "_")}" : "";
+                var displayName = NetFenceRules.GetRuleName(profileName, target + suffix, direction);
+                var remotePart = remoteAddress is not null
+                    ? $"-RemoteAddress {PowerShellRunner.Quote(remoteAddress)} "
+                    : "";
                 scriptLines.Add(
                     $"New-NetFirewallRule -DisplayName {PowerShellRunner.Quote(displayName)} " +
                     $"-Group {PowerShellRunner.Quote(group)} " +
-                    $"-Direction {direction} -Action Block " +
+                    $"-Direction {direction} -Action {action} " +
                     $"-Program {PowerShellRunner.Quote(target)} " +
+                    remotePart +
                     "-Profile Any -Enabled True | Out-Null");
             }
-        }
-        PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
-    }
-
-    private static void CreateInternetBlockRules(IEnumerable<string> targets, string group,
-        string profileName)
-    {
-        // RemoteAddress "Internet" blocks public IPs but allows Intranet (10/8, 172.16/12, 192.168/16)
-        var scriptLines = new List<string> { "$ErrorActionPreference = 'Stop'" };
-        foreach (var target in targets)
-        {
-            var displayName = NetFenceRules.GetRuleName(profileName, target + "_inet",
-                FirewallDirection.Outbound);
-            scriptLines.Add(
-                $"New-NetFirewallRule -DisplayName {PowerShellRunner.Quote(displayName)} " +
-                $"-Group {PowerShellRunner.Quote(group)} " +
-                "-Direction Outbound -Action Block " +
-                $"-Program {PowerShellRunner.Quote(target)} " +
-                "-RemoteAddress Internet " +
-                "-Profile Any -Enabled True | Out-Null");
-        }
-        PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
-    }
-
-    private static void CreateAllowRules(IEnumerable<string> targets, string group,
-        string profileName, IReadOnlyList<string> remoteIps)
-    {
-        var ipList = string.Join(",", remoteIps);
-        var scriptLines = new List<string> { "$ErrorActionPreference = 'Stop'" };
-        foreach (var target in targets)
-        {
-            var allowDisplayName = NetFenceRules.GetRuleName(profileName, target + "_allow",
-                FirewallDirection.Outbound);
-            scriptLines.Add(
-                $"New-NetFirewallRule -DisplayName {PowerShellRunner.Quote(allowDisplayName)} " +
-                $"-Group {PowerShellRunner.Quote(group)} " +
-                "-Direction Outbound -Action Allow " +
-                $"-Program {PowerShellRunner.Quote(target)} " +
-                $"-RemoteAddress {PowerShellRunner.Quote(ipList)} " +
-                "-Profile Any -Enabled True | Out-Null");
         }
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
     }

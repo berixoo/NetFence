@@ -201,7 +201,12 @@ public partial class App : System.Windows.Application
         try
         {
             if (enabled) StartWatcher();
-            else ProcessWatcher.Stop();
+            else
+            {
+                ProcessWatcher.Stop();
+                ProcessWatcher.ProcessStarted -= OnProcessStarted;
+                _watcherStarted = false;
+            }
         }
         catch { if (_watcherMenuItem is not null) _watcherMenuItem.Checked = !enabled; }
     }

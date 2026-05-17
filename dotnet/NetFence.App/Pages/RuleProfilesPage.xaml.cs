@@ -285,11 +285,10 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             var ruleCount = 0;
             await Task.Run(() =>
             {
-                // Remove current NetFence rules, then restore from snapshot
-                var group = NetFenceRules.GetRuleGroup(snapshot.ProfileName);
+                // Remove ALL current NetFence rules before restoring
                 PowerShellRunner.RunRequired(string.Join(Environment.NewLine,
                     "$ErrorActionPreference = 'Stop'",
-                    $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
+                    "$rules = @(Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Group -like 'NetFence:*' })",
                     "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
 
                 var rules = JsonSerializer.Deserialize<List<FirewallRuleInfo>>(snapshot.RulesJson) ?? [];
@@ -298,6 +297,10 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                 {
                     if (string.IsNullOrWhiteSpace(rule.Program) || !Path.IsPathFullyQualified(rule.Program))
                         continue;
+                    var group = NetFenceRules.GetRuleGroup(rule.ProfileName);
+                    var remotePart = !string.IsNullOrWhiteSpace(rule.RemoteAddress)
+                        ? $"-RemoteAddress {PowerShellRunner.Quote(rule.RemoteAddress)} "
+                        : "";
                     var script = string.Join(Environment.NewLine,
                         "$ErrorActionPreference = 'Stop'",
                         $"New-NetFirewallRule -DisplayName {PowerShellRunner.Quote(rule.DisplayName)} " +
@@ -305,6 +308,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                         $"-Direction {rule.Direction} -Action {rule.Action} " +
                         $"-Program {PowerShellRunner.Quote(rule.Program)} " +
                         $"-Enabled {rule.Enabled} " +
+                        remotePart +
                         "-Profile Any | Out-Null");
                     try { PowerShellRunner.RunRequired(script); }
                     catch { }

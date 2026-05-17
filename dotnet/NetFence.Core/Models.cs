@@ -34,7 +34,8 @@ public sealed record FirewallRuleInfo(
     string Direction,
     bool Enabled,
     string Action,
-    string Program);
+    string Program,
+    string RemoteAddress = "");
 
 public sealed record FirewallProgramTarget(string ProfileName, string Program);
 

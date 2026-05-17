@@ -18,6 +18,7 @@ public static class FirewallService
                         Enabled = [string]$_.Enabled
                         Action = [string]$_.Action
                         Program = [string]$app.Program
+                        RemoteAddress = [string]$_.RemoteAddress
                     }
                 } |
                 ConvertTo-Csv -NoTypeInformation
@@ -30,7 +31,8 @@ public static class FirewallService
                 row.GetValueOrDefault("Direction") ?? "",
                 string.Equals(row.GetValueOrDefault("Enabled"), "True", StringComparison.OrdinalIgnoreCase),
                 row.GetValueOrDefault("Action") ?? "",
-                row.GetValueOrDefault("Program") ?? ""))
+                row.GetValueOrDefault("Program") ?? "",
+                row.GetValueOrDefault("RemoteAddress") ?? ""))
             .ToArray();
     }
 
@@ -152,9 +154,9 @@ public static class FirewallService
 
         scriptLines.Add("$removed");
 
+        var preRules = GetStatus();
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines)));
-        var postRules = GetStatus();
-        RuleSnapshotStore.Create("selected", "UnblockSelected", postRules);
+        RuleSnapshotStore.Create("selected", "UnblockSelected", preRules);
         OperationLog.Write(OperationLog.DefaultPath, "UnblockSelected", $"Removed {removed} rule(s) for {targets.Count} selected executable file(s).", targets.Select(target => target.Program));
         OperationHistoryStore.Record("UnblockSelected", "selected", targets.Count);
         NetworkMonitor.InvalidateBlockedCache();
@@ -170,9 +172,9 @@ public static class FirewallService
             $rules.Count
             """;
 
+        var preRules = GetStatus();
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
-        var postRules = GetStatus();
-        RuleSnapshotStore.Create("all", "UnblockAll", postRules);
+        RuleSnapshotStore.Create("all", "UnblockAll", preRules);
         OperationLog.Write(OperationLog.DefaultPath, "UnblockAll", $"Removed {removed} NetFence rule(s).", []);
         OperationHistoryStore.Record("UnblockAll", "all", removed);
         NetworkMonitor.InvalidateBlockedCache();
