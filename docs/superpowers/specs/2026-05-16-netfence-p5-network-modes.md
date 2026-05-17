@@ -10,12 +10,16 @@
 |---|---|---|
 | 禁止全部 | `block_all` | 出站 Block + 入站 Block |
 | 允许全部 | `allow_all` | 删除该 profile 所有 NetFence 规则 |
-| 仅局域网 | `lan_only` | 出站 Block 全部 + 出站 Allow LAN 范围 |
-| 指定 IP/域名 | `custom` | 出站 Block 全部 + 出站 Allow 指定地址 |
+| 仅局域网 | `lan_only` | 出站 Block Internet（允许 Intranet）+ 入站 Block |
+| 指定 IP/CIDR | `custom` | 出站 Allow 指定 IP + 入站 Block |
+
+> ⚠️ Custom 模式受 Windows 防火墙 Block > Allow 限制，仅创建出站 Allow 规则 + 入站 Block。出站非允许 IP 的流量可能仍可达。
 
 ### LAN 范围
 
 `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`
+
+LAN Only 模式使用 `-RemoteAddress Internet` 关键字精确阻断互联网，同时保留 Intranet 访问。
 
 ### Allow 规则命名
 
@@ -31,19 +35,16 @@
   "paths": ["D:\\Apps\\Example"],
   "programs": ["helper.exe"],
   "mode": "block_all",
-  "allowedIps": [],
-  "allowedDomains": []
+  "allowedIps": []
 }
 ```
 
-custom 模式（仅 IP/CIDR，不支持域名）：
+custom 模式：
 ```json
 {
   "mode": "custom",
   "allowedIps": ["192.168.1.100", "10.0.0.0/8"]
 }
-```
-> ⚠️ Custom 模式受 Windows 防火墙 Block > Allow 限制，当前实现仅创建出站 Allow 规则 + 入站 Block。出站非允许 IP 的流量可能仍可达。详见 README 限制说明。
 ```
 
 ## 新增/修改文件
@@ -52,16 +53,16 @@ custom 模式（仅 IP/CIDR，不支持域名）：
 
 | 文件 | 操作 | 职责 |
 |---|---|---|
-| `FirewallModeService.cs` | 新增 | 按模式创建/删除规则、LAN allow 规则、IP/域名 allow 规则 |
-| `Models.cs` | 修改 | RuleProfile 增加 AllowedIps、AllowedDomains 字段 |
+| `FirewallModeService.cs` | 新增 | 按模式创建/删除规则、LAN Internet Block、Custom IP Allow |
+| `Models.cs` | 修改 | RuleProfile 增加 AllowedIps 字段 |
 | `RuleProfileStore.cs` | 修改 | Save/Get 支持新字段，数据库 DDL 加列 |
-| `Database.cs` | 修改 | 迁移：ALTER TABLE RuleProfiles ADD COLUMN AllowedIpsJson, AllowedDomainsJson |
+| `Database.cs` | 修改 | 迁移：ALTER TABLE RuleProfiles ADD COLUMN AllowedIpsJson |
 
 ### App
 
 | 文件 | 操作 |
 |---|---|
-| `Pages/RuleProfilesPage.xaml` | 修改：增加模式下拉框 + IP/域名编辑 |
+| `Pages/RuleProfilesPage.xaml` | 修改：增加模式下拉框 + IP/CIDR 编辑 |
 | `Pages/RuleProfilesPage.xaml.cs` | 修改：模式切换逻辑、保存/加载适配 |
 | `Services/LocaleService.cs` | 修改：新增翻译键 |
 
@@ -70,12 +71,9 @@ custom 模式（仅 IP/CIDR，不支持域名）：
 ```csharp
 public static class FirewallModeService
 {
-    // 应用模式：删除旧规则 → 按模式创建新规则
     void ApplyMode(string profileName, IEnumerable<string> targets,
-        string mode, IReadOnlyList<string> allowedIps,
-        IReadOnlyList<string> allowedDomains);
+        string mode, IReadOnlyList<string> allowedIps);
 
-    // LAN 范围
     IReadOnlyList<string> LanRanges { get; }
 }
 ```
@@ -84,17 +82,18 @@ public static class FirewallModeService
 
 在档案 save 按钮旁增加模式选择区：
 ```
-[保存档案] [加载] [删除] [导出] [导入]  │  模式: [禁止全部 ▾]  [✎ IP/域名]
+[保存档案] [加载] [删除] [导出] [导入]  │  模式: [禁止全部 ▾]  [✎ IP/CIDR]
 ```
 
-选择 custom 时展开文本框（Visible when mode=custom）：
+选择 custom 时展开文本框：
 ```
-允许的 IP/域名 (每行一个):
+允许的 IP/CIDR（每行一个）:
 ┌─────────────────────────────┐
 │ 192.168.1.100               │
 │ 10.0.0.0/8                  │
-│ api.example.com             │
 └─────────────────────────────┘
+
+⚠ 受 Windows 防火墙限制，仅创建出站 Allow + 入站 Block
 ```
 
 ## 翻译键新增
@@ -104,8 +103,9 @@ en-US / zh-CN：
 - `modeBlockAll` / "Block All" / "禁止全部"
 - `modeAllowAll` / "Allow All" / "允许全部"
 - `modeLanOnly` / "LAN Only" / "仅局域网"
-- `modeCustom` / "Custom IP/Domain" / "指定IP/域名"
-- `allowedIpsLabel` / "Allowed IPs/Domains (one per line)" / "允许的 IP/域名（每行一个）"
+- `modeCustom` / "Custom IP/CIDR" / "指定 IP/CIDR"
+- `allowedIpsLabel` / "Allowed IPs/CIDRs (one per line)" / "允许的 IP/CIDR（每行一个）"
+- `customModeNote` / "Note: due to Windows Firewall limitations..."
 - `modeApplied` / "Mode '{0}' applied to {1} target(s)." / "模式 '{0}' 已应用于 {1} 个目标。"
 
 ## 验证标准
@@ -113,7 +113,7 @@ en-US / zh-CN：
 1. 四种模式可正常选择和保存
 2. block_all → 创建出站+入站 Block
 3. allow_all → 删除该 profile 所有 NetFence 规则
-4. lan_only → 创建 Block + LAN Allow，局域网可访问
-5. custom → 创建 Block + 指定 IP/域名 Allow
-6. 档案导出/导入保留 allowedIps/allowedDomains
+4. lan_only → 创建 Internet Block 出站 + 入站 Block，局域网可访问
+5. custom → 创建指定 IP 出站 Allow + 入站 Block
+6. 档案导出/导入保留 allowedIps
 7. 构建 0 错误 0 警告
