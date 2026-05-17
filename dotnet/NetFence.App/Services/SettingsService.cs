@@ -24,6 +24,12 @@ public static class SettingsService
         set { Load().Language = value; Save(); }
     }
 
+    public static bool GuardianEnabled
+    {
+        get => Load().GuardianEnabled;
+        set { Load().GuardianEnabled = value; Save(); }
+    }
+
     private static SettingsData Load()
     {
         if (_current is not null) return _current;
@@ -66,5 +72,6 @@ public static class SettingsService
     {
         public string Theme { get; set; } = "system";
         public string Language { get; set; } = "";
+        public bool GuardianEnabled { get; set; } = true;
     }
 }

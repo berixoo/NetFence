@@ -16,6 +16,7 @@ public partial class App : System.Windows.Application
     private Forms.ToolStripMenuItem? _autoStartMenuItem;
     private bool _isExiting;
     private bool _ownsTrayIcon;
+    private bool _watcherStarted;
     private static string? _lastDispatcherError;
 
     private const string AutoStartKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -59,15 +60,18 @@ public partial class App : System.Windows.Application
             OperationLog.Write(OperationLog.DefaultPath, "StartupError_TrayIcon", ex.ToString(), []);
         }
 
-        // Start watcher on background thread to avoid blocking UI init
-        Task.Run(() =>
+        // Start watcher on background thread if enabled
+        if (SettingsService.GuardianEnabled)
         {
-            try { StartWatcher(); }
-            catch (Exception ex)
+            Task.Run(() =>
             {
-                OperationLog.Write(OperationLog.DefaultPath, "StartupError_Watcher", ex.ToString(), []);
+                try { StartWatcher(); }
+                catch (Exception ex)
+                {
+                    OperationLog.Write(OperationLog.DefaultPath, "StartupError_Watcher", ex.ToString(), []);
             }
         });
+        }
 
         try
         {
@@ -103,7 +107,7 @@ public partial class App : System.Windows.Application
         catch { icon = System.Drawing.SystemIcons.Application; _ownsTrayIcon = false; }
 
         _watcherMenuItem = new Forms.ToolStripMenuItem(LocaleService.T("trayEnableWatcher"))
-            { Checked = true };
+            { Checked = SettingsService.GuardianEnabled };
         _watcherMenuItem.Click += (_, _) => SyncWatcherToggle(!_watcherMenuItem.Checked);
 
         _autoStartMenuItem = new Forms.ToolStripMenuItem(LocaleService.T("trayAutoStart"))
@@ -137,6 +141,8 @@ public partial class App : System.Windows.Application
 
     private void StartWatcher()
     {
+        if (_watcherStarted) return;
+        _watcherStarted = true;
         ProcessWatcher.ProcessStarted += OnProcessStarted;
         ProcessWatcher.Start();
     }
@@ -190,6 +196,7 @@ public partial class App : System.Windows.Application
 
     public void SyncWatcherToggle(bool enabled)
     {
+        SettingsService.GuardianEnabled = enabled;
         if (_watcherMenuItem is not null) _watcherMenuItem.Checked = enabled;
         try
         {
@@ -248,6 +255,10 @@ public partial class App : System.Windows.Application
         if (result != MessageBoxResult.Yes) return;
 
         SetAutoStart(false);
+
+        // Remove all NetFence firewall rules before cleanup
+        try { FirewallService.UnblockAll(); }
+        catch { }
 
         var appDir = AppDomain.CurrentDomain.BaseDirectory;
         var dataDir = Path.Combine(

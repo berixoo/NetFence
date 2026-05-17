@@ -82,9 +82,9 @@ public static class FirewallService
             }
         }
 
+        var preRules = GetStatus();
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
-        var postRules = GetStatus();
-        RuleSnapshotStore.Create(profileName, "Block", postRules);
+        RuleSnapshotStore.Create(profileName, "Block", preRules);
         OperationLog.Write(OperationLog.DefaultPath, "Block", $"Blocked profile '{profileName}' for {targets.Count} executable file(s).", targets);
         OperationHistoryStore.Record("Block", profileName, targets.Count);
         NetworkMonitor.InvalidateBlockedCache();
@@ -101,7 +101,9 @@ public static class FirewallService
             "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }",
             "$rules.Count");
 
+        var preRules = GetStatus();
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
+        RuleSnapshotStore.Create(profileName, "Unblock", preRules);
         OperationLog.Write(OperationLog.DefaultPath, "Unblock", $"Removed {removed} rule(s) for profile '{profileName}'.", []);
         OperationHistoryStore.Record("Unblock", profileName, removed);
         NetworkMonitor.InvalidateBlockedCache();

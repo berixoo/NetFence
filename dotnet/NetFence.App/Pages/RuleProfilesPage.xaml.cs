@@ -282,22 +282,32 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             var snapshot = RuleSnapshotStore.GetById(row.Id);
             if (snapshot is null) return;
 
-            await Task.Run(FirewallService.UnblockAll);
-
-            var rules = JsonSerializer.Deserialize<List<FirewallRuleInfo>>(snapshot.RulesJson) ?? [];
-            var failedPaths = new List<string>();
-            foreach (var rule in rules)
+            await Task.Run(() =>
             {
-                if (!string.IsNullOrWhiteSpace(rule.Program) && Path.IsPathFullyQualified(rule.Program))
+                // Remove current NetFence rules, then restore from snapshot
+                var group = NetFenceRules.GetRuleGroup(snapshot.ProfileName);
+                PowerShellRunner.RunRequired(string.Join(Environment.NewLine,
+                    "$ErrorActionPreference = 'Stop'",
+                    $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
+                    "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
+
+                var rules = JsonSerializer.Deserialize<List<FirewallRuleInfo>>(snapshot.RulesJson) ?? [];
+                foreach (var rule in rules)
                 {
-                    try
-                    {
-                        await Task.Run(() =>
-                            FirewallService.Block(rule.Program, rule.ProfileName, false, Array.Empty<string>()));
-                    }
-                    catch { failedPaths.Add(rule.Program); }
+                    if (string.IsNullOrWhiteSpace(rule.Program) || !Path.IsPathFullyQualified(rule.Program))
+                        continue;
+                    var script = string.Join(Environment.NewLine,
+                        "$ErrorActionPreference = 'Stop'",
+                        $"New-NetFirewallRule -DisplayName {PowerShellRunner.Quote(rule.DisplayName)} " +
+                        $"-Group {PowerShellRunner.Quote(group)} " +
+                        $"-Direction {rule.Direction} -Action {rule.Action} " +
+                        $"-Program {PowerShellRunner.Quote(rule.Program)} " +
+                        $"-Enabled {rule.Enabled} " +
+                        "-Profile Any | Out-Null");
+                    try { PowerShellRunner.RunRequired(script); }
+                    catch { }
                 }
-            }
+            });
 
             RuleSnapshotStore.MarkRolledBack(row.Id);
             OperationHistoryStore.Record("Rollback", snapshot.ProfileName, rules.Count);

@@ -41,7 +41,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             { item.IsSelected = true; break; }
         }
 
-        GuardianToggle.IsChecked = ProcessWatcher.IsRunning;
+        GuardianToggle.IsChecked = SettingsService.GuardianEnabled;
         AutoStartToggle.IsChecked = IsAutoStartEnabled();
     }
 
