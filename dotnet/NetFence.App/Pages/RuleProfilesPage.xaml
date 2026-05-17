@@ -78,7 +78,7 @@
                   CanUserAddRows="False" IsReadOnly="True" Height="140"
                   Background="{DynamicResource ContentBackground}"
                   Foreground="{DynamicResource PrimaryText}"
-                  AlternatingRowBackground="{DynamicResource GridRowAlt}"
+                  RowBackground="{DynamicResource ContentBackground}" AlternatingRowBackground="{DynamicResource GridRowAlt}"
                   BorderBrush="{DynamicResource BorderColor}"
                   ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
             <DataGrid.Resources>

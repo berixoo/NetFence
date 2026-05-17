@@ -42,6 +42,7 @@
                   CanUserAddRows="False" IsReadOnly="True"
                   Background="{DynamicResource ContentBackground}"
                   Foreground="{DynamicResource PrimaryText}"
+                  RowBackground="{DynamicResource ContentBackground}"
                   AlternatingRowBackground="{DynamicResource GridRowAlt}"
                   BorderBrush="{DynamicResource BorderColor}"
                   ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
