@@ -45,8 +45,9 @@ public static class ProcessWatcher
     {
         try
         {
-            var pid = Convert.ToInt32(e.NewEvent.Properties["ProcessID"].Value);
-            var parentPid = Convert.ToInt32(e.NewEvent.Properties["ParentProcessID"].Value);
+            var pid = Convert.ToInt32(e.NewEvent.Properties["ProcessID"]?.Value ?? 0);
+            var parentPid = Convert.ToInt32(e.NewEvent.Properties["ParentProcessID"]?.Value ?? 0);
+            if (pid == 0) return;
             ProcessStarted?.Invoke(null, new WatcherEventArgs
             {
                 ProcessId = pid,

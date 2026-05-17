@@ -63,7 +63,7 @@ public static class NetworkMonitor
     private static void EnumerateTcp(List<NetworkConnection> results, HashSet<string> blockedPrograms)
     {
         EnumerateTable(results, blockedPrograms, "TCP",
-            GetExtendedTcpTable, 5, (rowPtr, state) =>
+            GetExtendedTcpTable, 5, Marshal.SizeOf<MibTcpRowOwnerPid>(), (rowPtr, state) =>
             {
                 var row = Marshal.PtrToStructure<MibTcpRowOwnerPid>(rowPtr);
                 return (row.dwOwningPid,
@@ -78,7 +78,7 @@ public static class NetworkMonitor
     private static void EnumerateUdp(List<NetworkConnection> results, HashSet<string> blockedPrograms)
     {
         EnumerateTable(results, blockedPrograms, "UDP",
-            GetExtendedUdpTable, 1, (rowPtr, _) =>
+            GetExtendedUdpTable, 1, Marshal.SizeOf<MibUdpRowOwnerPid>(), (rowPtr, _) =>
             {
                 var row = Marshal.PtrToStructure<MibUdpRowOwnerPid>(rowPtr);
                 return (row.dwOwningPid,
@@ -98,7 +98,7 @@ public static class NetworkMonitor
 
     private static void EnumerateTable(List<NetworkConnection> results,
         HashSet<string> blockedPrograms, string protocol,
-        TableApiDelegate api, uint tableClass, RowReaderDelegate readRow)
+        TableApiDelegate api, uint tableClass, int rowSize, RowReaderDelegate readRow)
     {
         const int maxRetries = 2;
         const uint afInet = 2;
@@ -126,7 +126,6 @@ public static class NetworkMonitor
         try
         {
             var count = Marshal.ReadInt32(buf);
-            var rowSize = Marshal.SizeOf<MibTcpRowOwnerPid>(); // Same size for both structs
             for (var i = 0; i < count; i++)
             {
                 var rowPtr = buf + 4 + i * rowSize;

@@ -24,6 +24,8 @@ public static class ServiceScanner
 
         foreach (var svc in ServiceController.GetServices())
         {
+            using (svc)
+            {
             // Skip kernel drivers, file-system drivers, adapters
             if (svc.ServiceType != ServiceType.Win32OwnProcess &&
                 svc.ServiceType != ServiceType.Win32ShareProcess)
@@ -55,6 +57,7 @@ public static class ServiceScanner
                     exePath, isSystem));
             }
             catch (Exception) { /* skip unreadable service */ }
+            }
         }
 
         return results.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToArray();
