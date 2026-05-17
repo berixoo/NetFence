@@ -19,6 +19,7 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
     private bool _lastStatusIsError;
     private bool _isUpdatingRuleName;
     private bool _ruleNameEditedByUser;
+    private CancellationTokenSource? _cancelSource;
     private string? _lastSuggestedRuleName;
 
     public ScanBlockPage()
@@ -84,10 +85,10 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
 
             await RunBusyAsync("blockRunning", "blockFailed", async () =>
             {
-                var result = await Task.Run(() => FirewallService.Block(path, name, includeLinked, selectedCandidates));
+                var result = await FirewallService.BlockAsync(path, name, includeLinked, selectedCandidates, _cancelSource?.Token ?? default);
                 var rules = await Task.Run(FirewallService.GetStatus);
                 ReplaceRules(rules);
-                SetStatus("blockedTargets", false, result.ProfileName, result.Targets.Count);
+                SetStatus("blockedPartial", false, result.ProfileName, result.SuccessCount, result.FailureCount);
             });
         }
         catch (Exception ex)
@@ -104,10 +105,10 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
             var name = NameBox.Text.Trim();
             await RunBusyAsync("unblockRunning", "unblockFailed", async () =>
             {
-                var result = await Task.Run(() => FirewallService.Unblock(path, name));
+                var removed = await FirewallService.UnblockAsync(path, name, _cancelSource?.Token ?? default);
                 var rules = await Task.Run(FirewallService.GetStatus);
                 ReplaceRules(rules);
-                SetStatus("unblockedRules", false, result.ProfileName, result.RemovedRuleCount);
+                SetStatus("unblockedRules", false, path, removed);
             });
         }
         catch (Exception ex)
@@ -141,7 +142,7 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
 
             await RunBusyAsync("unblockSelectedRunning", "unblockSelectedFailed", async () =>
             {
-                var removed = await Task.Run(() => FirewallService.UnblockSelectedPrograms(selectedRules));
+                var removed = await FirewallService.UnblockSelectedProgramsAsync(selectedRules, _cancelSource?.Token ?? default);
                 var rules = await Task.Run(FirewallService.GetStatus);
                 ReplaceRules(rules);
                 SetStatus("unblockedSelectedRules", false, removed, targets.Count);
@@ -169,7 +170,7 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
 
             await RunBusyAsync("unblockAllRunning", "unblockAllFailed", async () =>
             {
-                var removed = await Task.Run(FirewallService.UnblockAll);
+                var removed = await FirewallService.UnblockAllAsync(_cancelSource?.Token ?? default);
                 var rules = await Task.Run(FirewallService.GetStatus);
                 ReplaceRules(rules);
                 SetStatus("unblockedAllRules", false, removed);
@@ -272,11 +273,19 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
 
     private async Task RunBusyAsync(string runningKey, string failureKey, Func<Task> action)
     {
+        _cancelSource?.Cancel();
+        _cancelSource = new CancellationTokenSource();
         SetBusy(true);
         SetStatus(runningKey, false);
         try
         {
             await action();
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(runningKey, true);
+            // Refresh rules after cancel to show current state
+            try { var rules = await Task.Run(FirewallService.GetStatus); ReplaceRules(rules); } catch { }
         }
         catch (Exception ex)
         {
@@ -284,13 +293,18 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
         }
         finally
         {
+            _cancelSource.Dispose();
+            _cancelSource = null;
             SetBusy(false);
         }
     }
 
+    private void CancelButton_Click(object sender, RoutedEventArgs e) => _cancelSource?.Cancel();
+
     private void SetBusy(bool busy)
     {
         Progress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         Cursor = busy ? System.Windows.Input.Cursors.Wait : null;
         foreach (var control in new System.Windows.Controls.Control[]
                  {

@@ -198,8 +198,19 @@
 
         <!-- Row 4: Progress + Status -->
         <StackPanel Grid.Row="4">
-            <ProgressBar x:Name="Progress" Height="4" Margin="0,0,0,6" IsIndeterminate="True" Visibility="Collapsed"
-                         Foreground="{DynamicResource ProgressBarForeground}"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ProgressBar x:Name="Progress" Height="4" Margin="0,0,0,6" IsIndeterminate="True" Visibility="Collapsed"
+                             Foreground="{DynamicResource ProgressBarForeground}"/>
+                <Button x:Name="CancelButton" Grid.Column="1" Content="Cancel" Width="70" Height="24"
+                        Visibility="Collapsed" Click="CancelButton_Click"
+                        Background="{DynamicResource ButtonDangerBackground}"
+                        Foreground="{DynamicResource ButtonDangerForeground}" BorderThickness="0"
+                        FontSize="11" Margin="8,0,0,6"/>
+            </Grid>
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryText}"/>
         </StackPanel>
     </Grid>

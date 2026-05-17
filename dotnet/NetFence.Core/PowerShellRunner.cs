@@ -88,11 +88,13 @@ public static class PowerShellRunner
 
             var output = new StringBuilder();
             var error = new StringBuilder();
-            var outputDone = new ManualResetEventSlim();
-            var errorDone = new ManualResetEventSlim();
 
-            process.OutputDataReceived += (_, e) => { if (e.Data is not null) output.AppendLine(e.Data); };
-            process.ErrorDataReceived += (_, e) => { if (e.Data is not null) error.AppendLine(e.Data); };
+            var outputDone = new TaskCompletionSource<bool>();
+            var errorDone = new TaskCompletionSource<bool>();
+            process.OutputDataReceived += (_, e) =>
+            { if (e.Data is not null) output.AppendLine(e.Data); else outputDone.TrySetResult(true); };
+            process.ErrorDataReceived += (_, e) =>
+            { if (e.Data is not null) error.AppendLine(e.Data); else errorDone.TrySetResult(true); };
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
@@ -116,9 +118,8 @@ public static class PowerShellRunner
                 }
             }
 
-            process.WaitForExit(); // ensure async output events complete
-            outputDone.Wait(TimeSpan.FromSeconds(2));
-            errorDone.Wait(TimeSpan.FromSeconds(2));
+            process.WaitForExit();
+            Task.WhenAll(outputDone.Task, errorDone.Task).Wait(TimeSpan.FromSeconds(5));
 
             return new CommandResult(process.ExitCode, output.ToString(), error.ToString(), timedOut, canceled);
         }
