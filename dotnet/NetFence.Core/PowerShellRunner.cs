@@ -37,15 +37,15 @@ public static class PowerShellRunner
     }
 
     /// <summary>Serialise all firewall-modifying operations to prevent PowerShell flood.</summary>
-    public static async Task<T> QueueFirewallOp<T>(Func<Task<T>> operation)
+    public static async Task<T> QueueFirewallOp<T>(Func<Task<T>> operation, CancellationToken cancel = default)
     {
-        await GlobalLock.WaitAsync();
+        await GlobalLock.WaitAsync(cancel);
         try { return await operation(); }
         finally { GlobalLock.Release(); }
     }
 
-    public static async Task QueueFirewallOp(Func<Task> operation) =>
-        await QueueFirewallOp<object?>(async () => { await operation(); return null; });
+    public static async Task QueueFirewallOp(Func<Task> operation, CancellationToken cancel = default) =>
+        await QueueFirewallOp<object?>(async () => { await operation(); return null; }, cancel);
 
     public static string Quote(string value) => "'" + value.Replace("'", "''") + "'";
 
@@ -89,12 +89,10 @@ public static class PowerShellRunner
             var output = new StringBuilder();
             var error = new StringBuilder();
 
-            var outputDone = new TaskCompletionSource<bool>();
-            var errorDone = new TaskCompletionSource<bool>();
             process.OutputDataReceived += (_, e) =>
-            { if (e.Data is not null) output.AppendLine(e.Data); else outputDone.TrySetResult(true); };
+                { if (e.Data is not null) output.AppendLine(e.Data); };
             process.ErrorDataReceived += (_, e) =>
-            { if (e.Data is not null) error.AppendLine(e.Data); else errorDone.TrySetResult(true); };
+                { if (e.Data is not null) error.AppendLine(e.Data); };
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
@@ -119,7 +117,8 @@ public static class PowerShellRunner
             }
 
             process.WaitForExit();
-            Task.WhenAll(outputDone.Task, errorDone.Task).Wait(TimeSpan.FromSeconds(5));
+            process.CancelOutputRead();
+            process.CancelErrorRead();
 
             return new CommandResult(process.ExitCode, output.ToString(), error.ToString(), timedOut, canceled);
         }

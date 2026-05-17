@@ -267,7 +267,7 @@ public static class FirewallService
                     $"if ($existingNames.ContainsKey({qn})) {{ " +
                     $"Set-NetFirewallRule -DisplayName {qn} -Enabled True -Action Block -Direction {direction} -Profile Any -ErrorAction Stop | Out-Null }} " +
                     $"else {{ New-NetFirewallRule -DisplayName {qn} -Group $group -Direction {direction} -Action Block -Program {qt} -Profile Any -Enabled True -ErrorAction Stop | Out-Null }}; " +
-                    $"$success++ }} catch {{ $failure++ }}");
+                    $"$success++ }} catch {{ $failure++; [Console]::Error.WriteLine(\"FAIL|{t}|{d}|$($_.Exception.Message)\") }}");
             }
         }
 
@@ -303,7 +303,7 @@ public static class FirewallService
                 sl.Add($"try {{ " +
                     $"if ($existing.ContainsKey({qn})) {{ Set-NetFirewallRule -DisplayName {qn} -Enabled True -Action Block -Direction {d} -Profile Any -ErrorAction Stop | Out-Null }} " +
                     $"else {{ New-NetFirewallRule -DisplayName {qn} -Group $group -Direction {d} -Action Block -Program {qt} -Profile Any -Enabled True -ErrorAction Stop | Out-Null }}; " +
-                    $"$success++ }} catch {{ $failure++ }}");
+                    $"$success++ }} catch {{ $failure++; [Console]::Error.WriteLine(\"FAIL|{t}|{d}|$($_.Exception.Message)\") }}");
             }
         }
         sl.Add("[PSCustomObject]@{ SuccessCount = $success; FailureCount = $failure } | ConvertTo-Csv -NoTypeInformation");
