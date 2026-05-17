@@ -397,6 +397,7 @@ public partial class ScanBlockPage : System.Windows.Controls.UserControl
         ExportButton.Content = LocaleService.T("exportSnapshot");
         OpenLogButton.Content = LocaleService.T("openLog");
         RefreshButton.Content = LocaleService.T("refresh");
+        CancelButton.Content = LocaleService.T("cancel");
 
         CandidatesTabHeader.Text = LocaleService.T("relatedCandidates");
         RulesTabHeader.Text = LocaleService.T("firewallRules");
