@@ -129,7 +129,7 @@ dotnet build NetFence.sln -c Release
 | 禁止全部 | 阻断所有出入站流量 |
 | 允许全部 | 删除所有 NetFence 规则（恢复联网） |
 | 仅局域网 | 阻断互联网但允许局域网（127/10/172.16/192.168） |
-| 指定 IP | 只允许你指定的 IP 地址，其余全部阻断 |
+| 指定 IP/CIDR | 创建指定 IP 出站 Allow 规则。受 Windows 防火墙限制，不保证阻断其它出站流量，入站阻断正常 |
 
 ### 6. 快照回滚
 
@@ -235,7 +235,7 @@ NetFence is a Windows desktop tool that uses the built-in Windows Defender Firew
 | Block All | Block all inbound + outbound traffic |
 | Allow All | Remove all NetFence rules |
 | LAN Only | Block internet, allow LAN (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) |
-| Custom IPs | Block all except specified IP addresses |
+| Custom IP/CIDR | Creates Allow rules for specified IPs. Non-allowed outbound traffic not guaranteed blocked (Win Firewall limitation) |
 
 ### Building
 

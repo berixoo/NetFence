@@ -19,7 +19,7 @@ public static class FirewallService
                         Enabled = [string]$_.Enabled
                         Action = [string]$_.Action
                         Program = [string]$app.Program
-                        RemoteAddress = [string]$addr.RemoteAddress
+                        RemoteAddress = [string]($addr.RemoteAddress -join ',')
                     }
                 } |
                 ConvertTo-Csv -NoTypeInformation
