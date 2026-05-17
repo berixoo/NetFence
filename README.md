@@ -5,7 +5,8 @@
 <h1 align="center">NetFence</h1>
 
 <p align="center">
-  <strong>Block any program from accessing the network — without disconnecting your PC.</strong>
+  <strong>在不切断电脑网络的情况下，让指定软件不能联网。</strong><br>
+  <sup>Block any program from accessing the network — without disconnecting your PC.</sup>
 </p>
 
 <p align="center">
@@ -17,38 +18,40 @@
 
 ---
 
-NetFence is a **Windows desktop tool** that uses the built-in Windows Defender Firewall to block specific applications from reaching the internet. Rules are **persistent** — they survive reboots and work even after you close NetFence.
+**中文** | [English](#english)
 
-## Features
+NetFence 是一个 Windows 桌面工具，通过 Windows Defender 防火墙规则来阻止特定程序联网。规则是**持久化**的——关闭 NetFence 后仍然生效，重启电脑后也会继续生效。
 
-| Module | What it does |
+---
+
+## 功能一览
+
+| 模块 | 功能 |
 |---|---|
-| **Scan & Block** | Select an `.exe` or a folder, scan for executables, and block them with one click |
-| **Related Processes** | Automatically find child processes, same-directory helpers, and command-line launchers |
-| **Network Monitor** | Real-time view of all TCP/UDP connections — remote IP, port, protocol, state, blocked status |
-| **Services & Tasks** | Scan and manage Windows services and scheduled tasks related to blocked software |
-| **Rule Profiles** | Save/load rule configurations as JSON, import/export for sharing, rollback to any snapshot |
-| **Network Modes** | Block All / Allow All / LAN Only / Custom IPs — choose how strict you want the firewall |
-| **System Tray** | Minimize to tray, auto-block child processes, launch on startup, balloon notifications |
-| **Uninstall** | One-click cleanup — removes all rules, settings, database, and the application itself |
+| **扫描封禁** | 选择 `.exe` 或文件夹，一键扫描并阻断联网 |
+| **关联进程** | 自动发现子进程、同目录程序、命令行引用的辅助程序 |
+| **联网监控** | 实时显示所有 TCP/UDP 连接：远程 IP、端口、协议、状态、拦截状态 |
+| **服务/计划任务** | 扫描与管理目标软件相关的 Windows 服务和计划任务 |
+| **规则档案** | 保存/加载规则配置为 JSON，导入/导出，快照回滚 |
+| **联网模式** | 四种模式：禁止全部 / 允许全部 / 仅局域网 / 指定 IP |
+| **托盘常驻** | 最小化到托盘、子进程自动封禁、开机自启、气泡通知 |
+| **卸载** | 一键清理：删除所有规则、配置、数据库和程序文件 |
 
-## Screenshots
+## 系统要求
 
-<p align="center">
-  <em>Dark theme — Scan & Block page</em>
-</p>
+- Windows 10 或更高版本
+- **管理员权限**（阻断/解除联网需要修改防火墙规则）
+- 自包含发布版无需安装 .NET Runtime
 
-> *Screenshots coming soon — submit yours in a PR!*
+## 安装
 
-## Installation
+### 方式一：下载 Release
 
-### Option 1: Download Release
+从 [Releases](https://github.com/berixoo/NetFence/releases) 下载最新的 `NetFence-win-x64.zip`，解压后运行 `NetFence.exe`。
 
-Download the latest `NetFence-win-x64.zip` from [Releases](https://github.com/berixoo/NetFence/releases), extract, and run `NetFence.exe`.
+**自包含发布，无需安装 .NET 运行时。**
 
-**No .NET runtime required** — the release is self-contained.
-
-### Option 2: Build from Source
+### 方式二：源码构建
 
 ```bash
 git clone https://github.com/berixoo/NetFence.git
@@ -56,140 +59,180 @@ cd NetFence
 dotnet build NetFence.sln -c Release
 ```
 
-Output: `dotnet\NetFence.App\bin\Release\net9.0-windows\NetFence.exe`
+输出位置：`dotnet\NetFence.App\bin\Release\net9.0-windows\NetFence.exe`
 
-**Requirements:** .NET 9 SDK, Windows 10+
+## 使用教程
 
-## Usage Guide
+### 1. 禁止程序联网
 
-### 1. Block a Program
+1. 以**管理员身份**运行 `NetFence.exe`
+2. 在侧栏「扫描封禁」页，点击**选择 EXE** 选择单个程序，或**选择文件夹**阻断整个目录
+3. 程序会自动生成一个**规则名称**，可以手动修改
+4. 点击**扫描关联程序**，发现子进程、同目录 helper、有网络连接的进程
+5. 检查候选列表，取消不想阻断的项
+6. 点击**禁止联网**，入站+出站防火墙规则立即生效
 
-1. Launch **NetFence.exe as Administrator** (required for firewall changes)
-2. On the **Scan & Block** page, click **Select EXE** and choose a `.exe` file, or **Select Folder** to block an entire directory
-3. The tool auto-generates a **rule name** — you can change it
-4. Click **Scan Related** to find child processes, same-directory helpers, and network-connected programs
-5. Review the candidates — uncheck any you don't want blocked
-6. Click **Block Network** — inbound + outbound firewall rules are created instantly
+### 2. 恢复联网
 
-### 2. Unblock a Program
+- **解除禁止** — 删除当前目标路径+规则名称对应的规则
+- **解除选中** — 在防火墙规则列表中勾选特定规则，只删除选中的
+- **解除全部** — 删除所有 NetFence 管理的规则（紧急恢复）
 
-- **Unblock** — removes rules for the current target path + rule name
-- **Unblock Selected** — select specific rules from the Firewall Rules list and remove just those
-- **Unblock All** — remove every NetFence-managed rule (emergency recovery)
+### 3. 实时联网监控
 
-### 3. Monitor Network Activity
+切换到「联网监控」页面，查看所有活跃的 TCP/UDP 连接：
 
-Navigate to **Network Monitor** to see all active TCP and UDP connections in real time:
+- 进程名、PID、程序路径
+- 远程 IP 地址和端口
+- 协议（TCP/UDP）和连接状态
+- **拦截状态** —— 已被 NetFence 阻断的程序显示"已阻断"
 
-- Process name, PID, program path
-- Remote IP address and port
-- Protocol (TCP/UDP) and connection state
-- **Blocked status** — shows "Blocked" in red if NetFence is filtering that program
+支持 1 秒 / 2 秒 / 5 秒 / 10 秒自动刷新。
 
-Auto-refresh at 1s / 2s / 5s / 10s intervals.
+### 4. 扫描服务与计划任务
 
-### 4. Scan Services & Scheduled Tasks
+切换到「服务/计划任务」页，输入目标路径后点击**扫描**：
 
-Navigate to **Services & Tasks**, enter a target path, and click **Scan**:
+- **服务标签页** — 列出 exe 位于目标目录下的 Windows 服务。可停止服务或禁用自启动。
+- **计划任务标签页** — 列出引用目标路径的计划任务。可禁用任务或阻断其 exe。
 
-- **Services tab** — lists Windows services whose executables live under the target directory. Stop services or disable their auto-start.
-- **Tasks tab** — lists scheduled tasks that reference the target path. Disable tasks or block their executables.
+系统关键服务（svchost、lsass 等）**受保护**，无法操作。
 
-System-critical services (svchost, lsass, etc.) are **protected** and cannot be stopped.
+### 5. 管理规则档案
 
-### 5. Save and Manage Rule Profiles
+切换到「规则档案」页：
 
-Navigate to **Rule Profiles** to manage your blocking configurations:
+- **保存档案** — 将当前防火墙规则保存为命名档案
+- **加载并阻断** — 加载已保存档案并重新应用规则
+- **导出 JSON** — 导出为 `.json` 文件，用于备份或分享
+- **导入 JSON** — 从 `.json` 文件导入档案
 
-- **Save Profile** — save current firewall rules as a named profile
-- **Load & Block** — load a saved profile and re-apply its rules
-- **Export JSON** — export a profile to a `.json` file for backup or sharing
-- **Import JSON** — import a profile from a `.json` file
+档案支持四种**联网模式**：
 
-Profiles support four **network modes**:
+| 模式 | 行为 |
+|---|---|
+| 禁止全部 | 阻断所有出入站流量 |
+| 允许全部 | 删除所有 NetFence 规则（恢复联网） |
+| 仅局域网 | 阻断互联网但允许局域网（127/10/172.16/192.168） |
+| 指定 IP | 只允许你指定的 IP 地址，其余全部阻断 |
+
+### 6. 快照回滚
+
+每次阻断/解除操作前会自动创建规则快照。如果操作出问题：
+
+1. 打开「规则档案」→「操作快照」区域
+2. 选中操作前的快照
+3. 点击**回滚** → 确认 → 规则恢复
+
+### 7. 托盘常驻与后台守护
+
+- **最小化到托盘** — 关闭窗口时隐藏到系统托盘，不退出程序
+- **后台守护** — 开启后，当被封禁程序启动子进程时，自动阻断子进程并弹出气泡通知
+- **开机自启** — 在设置或托盘菜单中启用
+
+### 8. 卸载
+
+从设置页或托盘菜单 → **卸载**：
+
+1. 弹出确认对话框
+2. 删除所有 NetFence 防火墙规则
+3. 删除 `%LOCALAPPDATA%\NetFence\` 全部数据
+4. 程序目录将在下次重启后自动删除
+
+## 数据存储
+
+所有数据存储在本地：
+
+| 数据 | 位置 |
+|---|---|
+| 防火墙规则 | Windows Defender 防火墙 |
+| 规则档案 & 快照 | `%LOCALAPPDATA%\NetFence\NetFence.db`（SQLite） |
+| 用户设置 | `%LOCALAPPDATA%\NetFence\settings.json` |
+| 操作日志 | `%LOCALAPPDATA%\NetFence\NetFence.log` |
+
+## 技术栈
+
+- **.NET 9** — WPF 桌面应用
+- **SQLite** — 本地数据库
+- **Windows 防火墙** — `New-NetFirewallRule` + PowerShell
+- **P/Invoke** — `GetExtendedTcpTable`/`GetExtendedUdpTable` 实时网络监控
+- **WMI** — `Win32_ProcessStartTrace` 进程创建监听
+
+## 构建
+
+```bash
+# Debug 构建
+dotnet build NetFence.sln -c Debug
+
+# Release 构建
+dotnet build NetFence.sln -c Release
+
+# 运行测试
+dotnet run --project dotnet\NetFence.Core.Tests\NetFence.Core.Tests.csproj -c Release
+
+# 自包含发布
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-release.ps1
+```
+
+## 注意事项
+
+- **规则是持久化的。**关闭 NetFence 不会恢复联网，必须使用「解除禁止」删除规则
+- NetFence **不会阻断** `C:\Windows\` 下的系统程序
+- 关联进程扫描是**辅助判断**，阻断前建议检查候选列表
+- **管理员权限**是执行阻断/解除操作的必要条件
+
+---
+
+## English {#english}
+
+NetFence is a Windows desktop tool that blocks specific applications from accessing the internet using persistent Windows Defender Firewall rules. Rules survive closing NetFence and rebooting your PC.
+
+### Features
+
+| Module | What it does |
+|---|---|
+| **Scan & Block** | Select an `.exe` or folder, scan, and block with one click |
+| **Related Processes** | Auto-discover child processes, same-dir helpers, and CLI-launched programs |
+| **Network Monitor** | Real-time TCP/UDP connection view: remote IP, port, protocol, state, blocked status |
+| **Services & Tasks** | Scan and manage Windows services and scheduled tasks tied to blocked software |
+| **Rule Profiles** | Save/load rule configs as JSON, import/export, snapshot rollback |
+| **Network Modes** | Block All / Allow All / LAN Only / Custom IPs |
+| **System Tray** | Minimize to tray, auto-block child processes, startup with Windows, notifications |
+| **Uninstall** | One-click cleanup of all rules, data, and program files |
+
+### Quick Start
+
+1. Run `NetFence.exe` **as Administrator**
+2. **Scan & Block** → select an `.exe` or folder → click **Scan Related** → click **Block Network**
+3. To restore networking: **Unblock**, **Unblock Selected**, or **Unblock All**
+4. **Network Monitor** shows all active TCP/UDP connections in real time
+5. **Rule Profiles** saves your blocking configs as JSON for backup and sharing
+6. Closing the window minimizes to **system tray** — right-click for menu
+
+### Network Modes
 
 | Mode | Behavior |
 |---|---|
 | Block All | Block all inbound + outbound traffic |
-| Allow All | Remove all NetFence rules (restore networking) |
-| LAN Only | Block internet but allow local network (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) |
-| Custom IPs | Block all except specific IP addresses you define |
+| Allow All | Remove all NetFence rules |
+| LAN Only | Block internet, allow LAN (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) |
+| Custom IPs | Block all except specified IP addresses |
 
-### 6. Rollback to a Snapshot
-
-Every Block/Unblock operation automatically creates a **snapshot** of your firewall rules before the change. If something goes wrong:
-
-1. Go to **Rule Profiles** → **Snapshots** section
-2. Select a snapshot from before the bad change
-3. Click **Rollback** → confirm → your rules are restored
-
-### 7. System Tray & Background Guardian
-
-- **Minimize to tray** — closing the window hides NetFence to the system tray
-- **Background Guardian** — when enabled, NetFence watches for new process creation. If a blocked program spawns a child process, it's automatically blocked. A balloon notification tells you what was blocked.
-- **Start with Windows** — enable in Settings or from the tray menu
-
-### 8. Uninstall
-
-**From Settings page** or **tray menu → Uninstall**:
-
-1. Confirmation dialog appears
-2. All NetFence firewall rules are removed
-3. All data (`%LOCALAPPDATA%\NetFence\`) is deleted
-4. The application directory is scheduled for removal on next reboot
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `Ctrl+1` | Scan & Block page |
-| `Ctrl+2` | Network Monitor |
-| `Ctrl+3` | Services & Tasks |
-| `Ctrl+4` | Rule Profiles |
-| `Ctrl+5` | Settings |
-
-## Data Storage
-
-All data is stored locally on your machine:
-
-| What | Where |
-|---|---|
-| Firewall rules | Windows Defender Firewall |
-| Rule profiles & snapshots | `%LOCALAPPDATA%\NetFence\NetFence.db` (SQLite) |
-| User settings | `%LOCALAPPDATA%\NetFence\settings.json` |
-| Operation log | `%LOCALAPPDATA%\NetFence\NetFence.log` |
-
-## Tech Stack
-
-- **.NET 9** — WPF desktop application
-- **SQLite** — local database for profiles and history
-- **Windows Firewall** — `New-NetFirewallRule` via PowerShell
-- **P/Invoke** — `GetExtendedTcpTable` / `GetExtendedUdpTable` for real-time network monitoring
-- **WMI** — `Win32_ProcessStartTrace` for process creation watching
-
-## Building
+### Building
 
 ```bash
-# Debug build
-dotnet build NetFence.sln -c Debug
-
-# Release build
+git clone https://github.com/berixoo/NetFence.git
+cd NetFence
 dotnet build NetFence.sln -c Release
-
-# Run tests
 dotnet run --project dotnet\NetFence.Core.Tests\NetFence.Core.Tests.csproj -c Release
-
-# Publish self-contained
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-release.ps1
 ```
 
-## Important Notes
+### Notes
 
-- **Rules are persistent.** Closing NetFence does not unblock programs. Use Unblock to restore networking.
-- NetFence will **never block** executables under `C:\Windows\` (system directory protection)
-- Related process scanning is a **best-effort heuristic** — review candidates before blocking
-- **Administrator privileges** are required for blocking, unblocking, and monitoring
+- Rules are persistent. Unblock to restore networking.
+- `C:\Windows\` programs are protected and cannot be blocked.
+- Admin privileges required for all firewall operations.
 
-## License
+---
 
-MIT
+**License:** MIT
