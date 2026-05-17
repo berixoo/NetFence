@@ -183,7 +183,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-release.ps
 
 ---
 
-## English {#english}
+## English
 
 NetFence is a Windows desktop tool that blocks specific applications from accessing the internet using persistent Windows Defender Firewall rules. Rules survive closing NetFence and rebooting your PC.
 
