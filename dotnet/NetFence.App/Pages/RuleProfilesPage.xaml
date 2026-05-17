@@ -69,6 +69,8 @@
                      Foreground="{DynamicResource PrimaryText}"
                      BorderBrush="{DynamicResource BorderColor}"
                      VerticalScrollBarVisibility="Auto"/>
+            <TextBlock x:Name="CustomModeNote" Margin="0,6,0,0" FontSize="11"
+                       Foreground="{DynamicResource WarningOrange}" TextWrapping="Wrap"/>
         </StackPanel>
 
         <!-- Profiles DataGrid -->

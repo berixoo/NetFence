@@ -11,6 +11,7 @@ public static class FirewallService
                 Sort-Object Group, DisplayName |
                 ForEach-Object {
                     $app = $_ | Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue
+                    $addr = $_ | Get-NetFirewallAddressFilter -ErrorAction SilentlyContinue
                     [PSCustomObject]@{
                         ProfileName = ($_.Group -replace '^NetFence:', '')
                         DisplayName = $_.DisplayName
@@ -18,7 +19,7 @@ public static class FirewallService
                         Enabled = [string]$_.Enabled
                         Action = [string]$_.Action
                         Program = [string]$app.Program
-                        RemoteAddress = [string]$_.RemoteAddress
+                        RemoteAddress = [string]$addr.RemoteAddress
                     }
                 } |
                 ConvertTo-Csv -NoTypeInformation

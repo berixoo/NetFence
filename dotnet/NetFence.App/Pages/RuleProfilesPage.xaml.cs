@@ -50,6 +50,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             ModeCustom.Content = LocaleService.T("modeCustom");
             ApplyModeButton.Content = LocaleService.T("applyMode");
             AllowedIpsLabel.Text = LocaleService.T("allowedIpsLabel");
+            CustomModeNote.Text = LocaleService.T("customModeNote");
         });
     }
 
