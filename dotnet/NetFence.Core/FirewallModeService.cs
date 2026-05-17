@@ -28,7 +28,19 @@ public static class FirewallModeService
         NetworkMode mode, IReadOnlyList<string> allowedIps,
         IReadOnlyList<string> allowedDomains)
     {
-        ApplyModeCore(profileName, targets, mode, allowedIps,
+        ApplyModeCoreSync(profileName, targets, mode, allowedIps);
+    }
+
+    private static void ApplyModeCoreSync(string profileName, IEnumerable<string> targets,
+        NetworkMode mode, IReadOnlyList<string> allowedIps)
+    {
+        var group = NetFenceRules.GetRuleGroup(profileName);
+        PowerShellRunner.RunRequired(string.Join(Environment.NewLine,
+            "$ErrorActionPreference = 'Continue'",
+            $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
+            "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
+        if (mode == NetworkMode.AllowAll) return;
+        ApplyModeActions(targets, group, profileName, mode, allowedIps,
             script => PowerShellRunner.RunRequired(script));
     }
 
@@ -38,50 +50,62 @@ public static class FirewallModeService
     {
         await PowerShellRunner.QueueFirewallOp(async () =>
         {
-            ApplyModeCore(profileName, targets, mode, allowedIps,
-                script => PowerShellRunner.RunRequiredAsync(script, TimeSpan.FromSeconds(120), cancel).GetAwaiter().GetResult());
+            await ApplyModeCoreAsync(profileName, targets, mode, allowedIps,
+                script => PowerShellRunner.RunRequiredAsync(script, TimeSpan.FromSeconds(120), cancel));
         }, cancel);
     }
 
-    private static void ApplyModeCore(string profileName, IEnumerable<string> targets,
+    private static async Task ApplyModeCoreAsync(string profileName, IEnumerable<string> targets,
         NetworkMode mode, IReadOnlyList<string> allowedIps,
-        Func<string, string> runScript)
+        Func<string, Task<string>> runScript)
     {
         var group = NetFenceRules.GetRuleGroup(profileName);
-
-        runScript(string.Join(Environment.NewLine,
+        await runScript(string.Join(Environment.NewLine,
             "$ErrorActionPreference = 'Continue'",
             $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
             "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
-
         if (mode == NetworkMode.AllowAll) return;
+        await ApplyModeActionsAsync(targets, group, profileName, mode, allowedIps, runScript);
+    }
 
+    private static void ApplyModeActions(IEnumerable<string> targets, string group,
+        string profileName, NetworkMode mode, IReadOnlyList<string> allowedIps,
+        Func<string, string> runSync)
+    {
+        var asyncRun = new Func<string, Task<string>>(s => Task.FromResult(runSync(s)));
+        ApplyModeActionsAsync(targets, group, profileName, mode, allowedIps, asyncRun).GetAwaiter().GetResult();
+    }
+
+    private static async Task ApplyModeActionsAsync(IEnumerable<string> targets, string group,
+        string profileName, NetworkMode mode, IReadOnlyList<string> allowedIps,
+        Func<string, Task<string>> runScript)
+    {
         switch (mode)
         {
             case NetworkMode.BlockAll:
-                BatchCreateRulesCore(targets, group, profileName,
+                await BatchCreateRulesCore(targets, group, profileName,
                     new[] { FirewallDirection.Inbound, FirewallDirection.Outbound }, "Block", null, runScript);
                 break;
             case NetworkMode.LanOnly:
-                BatchCreateRulesCore(targets, group, profileName,
+                await BatchCreateRulesCore(targets, group, profileName,
                     new[] { FirewallDirection.Outbound }, "Block", "Internet", runScript);
-                BatchCreateRulesCore(targets, group, profileName,
+                await BatchCreateRulesCore(targets, group, profileName,
                     new[] { FirewallDirection.Inbound }, "Block", null, runScript);
                 break;
             case NetworkMode.Custom:
                 var ips = allowedIps.Where(ip => !string.IsNullOrWhiteSpace(ip)).ToList();
                 if (ips.Count > 0)
-                    BatchCreateRulesCore(targets, group, profileName,
+                    await BatchCreateRulesCore(targets, group, profileName,
                         new[] { FirewallDirection.Outbound }, "Allow", string.Join(",", ips), runScript);
-                BatchCreateRulesCore(targets, group, profileName,
+                await BatchCreateRulesCore(targets, group, profileName,
                     new[] { FirewallDirection.Inbound }, "Block", null, runScript);
                 break;
         }
     }
 
-    private static void BatchCreateRulesCore(IEnumerable<string> targets, string group,
+    private static async Task BatchCreateRulesCore(IEnumerable<string> targets, string group,
         string profileName, FirewallDirection[] directions, string action, string? remoteAddress,
-        Func<string, string> runScript)
+        Func<string, Task<string>> runScript)
     {
         var scriptLines = new List<string> { "$ErrorActionPreference = 'Continue'" };
         foreach (var target in targets)
@@ -102,6 +126,6 @@ public static class FirewallModeService
                     "-Profile Any -Enabled True | Out-Null");
             }
         }
-        runScript(string.Join(Environment.NewLine, scriptLines));
+        await runScript(string.Join(Environment.NewLine, scriptLines));
     }
 }

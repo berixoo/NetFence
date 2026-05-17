@@ -113,10 +113,15 @@ public static class PowerShellRunner
                     canceled = cancel.IsCancellationRequested;
                     timedOut = !canceled;
                     try { process.Kill(entireProcessTree: true); } catch { }
+                    // Bounded wait after kill — 5 seconds max
+                    var exited = false;
+                    try { exited = process.WaitForExit(5000); } catch { }
+                    if (!exited) { /* process didn't die, return what we have */ }
                 }
             }
 
-            process.WaitForExit();
+            if (!timedOut && !canceled)
+                process.WaitForExit();
             process.CancelOutputRead();
             process.CancelErrorRead();
 

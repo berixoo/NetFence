@@ -7,30 +7,39 @@ public static class FirewallService
     private static readonly TimeSpan WriteTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(30);
 
+    public static async Task<IReadOnlyList<FirewallRuleInfo>> GetStatusAsync(CancellationToken cancel = default)
+    {
+        var result = await PowerShellRunner.RunAsync(GetStatusScript, ReadTimeout, cancel);
+        return ParseStatusOutput(result.StandardOutput);
+    }
+
     public static IReadOnlyList<FirewallRuleInfo> GetStatus()
     {
-        var script = """
-            $ErrorActionPreference = 'Continue'
-            Get-NetFirewallRule -ErrorAction SilentlyContinue |
-                Where-Object { $_.Group -like 'NetFence:*' } |
-                Sort-Object Group, DisplayName |
-                ForEach-Object {
-                    $app = $_ | Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue
-                    $addr = $_ | Get-NetFirewallAddressFilter -ErrorAction SilentlyContinue
-                    [PSCustomObject]@{
-                        ProfileName = ($_.Group -replace '^NetFence:', '')
-                        DisplayName = $_.DisplayName
-                        Direction = [string]$_.Direction
-                        Enabled = [string]$_.Enabled
-                        Action = [string]$_.Action
-                        Program = [string]$app.Program
-                        RemoteAddress = [string]($addr.RemoteAddress -join ',')
-                    }
-                } |
-                ConvertTo-Csv -NoTypeInformation
-            """;
+        return ParseStatusOutput(PowerShellRunner.RunRequired(GetStatusScript));
+    }
 
-        return LiveSystemInfo.ParseCsv(PowerShellRunner.RunRequired(script))
+    private static string GetStatusScript => string.Join(Environment.NewLine,
+        "$ErrorActionPreference = 'Continue'",
+        "Get-NetFirewallRule -ErrorAction SilentlyContinue |",
+        "    Where-Object { $_.Group -like 'NetFence:*' } |",
+        "    Sort-Object Group, DisplayName |",
+        "    ForEach-Object {",
+        "        $app = $_ | Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue",
+        "        $addr = $_ | Get-NetFirewallAddressFilter -ErrorAction SilentlyContinue",
+        "        [PSCustomObject]@{",
+        "            ProfileName = ($_.Group -replace '^NetFence:', '')",
+        "            DisplayName = $_.DisplayName",
+        "            Direction = [string]$_.Direction",
+        "            Enabled = [string]$_.Enabled",
+        "            Action = [string]$_.Action",
+        "            Program = [string]$app.Program",
+        "            RemoteAddress = [string]($addr.RemoteAddress -join ',')",
+        "        }",
+        "    } |",
+        "    ConvertTo-Csv -NoTypeInformation");
+
+    private static IReadOnlyList<FirewallRuleInfo> ParseStatusOutput(string output) =>
+        LiveSystemInfo.ParseCsv(output)
             .Select(row => new FirewallRuleInfo(
                 row.GetValueOrDefault("ProfileName") ?? "",
                 row.GetValueOrDefault("DisplayName") ?? "",
@@ -40,7 +49,6 @@ public static class FirewallService
                 row.GetValueOrDefault("Program") ?? "",
                 row.GetValueOrDefault("RemoteAddress") ?? ""))
             .ToArray();
-    }
 
     public static async Task<FirewallOperationResult> BlockAsync(
         string path, string? name, bool includeLinked,
