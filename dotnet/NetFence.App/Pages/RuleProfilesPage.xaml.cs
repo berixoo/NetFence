@@ -137,7 +137,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             var mode = FirewallModeService.KeyToMode(profile.Mode);
             await Task.Run(() =>
                 FirewallModeService.ApplyModeAsync(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
-                    mode, profile.AllowedIps, _cancelSource?.Token ?? default));
+                    mode, profile.AllowedIps, CancellationToken.None));
             System.Windows.MessageBox.Show(
                 LocaleService.T("profileLoaded"), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -282,7 +282,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
 
             await Task.Run(() =>
                 FirewallModeService.ApplyModeAsync(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
-                    mode, ips, _cancelSource?.Token ?? default));
+                    mode, ips, CancellationToken.None));
             System.Windows.MessageBox.Show(
                 LocaleService.T("modeApplied", modeKey), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
