@@ -74,7 +74,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void StopServiceButton_Click(object sender, RoutedEventArgs e)
+    private async void StopServiceButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -84,8 +84,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 LocaleService.T("stopServiceConfirm", svc.Name), "NetFence",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
-            Task.Run(() =>
-            { try { ServiceScanner.StopService(svc.Name); } catch { } });
+            await Task.Run(() => ServiceScanner.StopService(svc.Name));
         }
         catch (Exception ex)
         {
@@ -93,7 +92,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void DisableServiceButton_Click(object sender, RoutedEventArgs e)
+    private async void DisableServiceButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -103,8 +102,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 LocaleService.T("disableServiceConfirm", svc.Name), "NetFence",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
-            Task.Run(() =>
-            { try { ServiceScanner.DisableService(svc.Name); } catch { } });
+            await Task.Run(() => ServiceScanner.DisableService(svc.Name));
         }
         catch (Exception ex)
         {
@@ -112,7 +110,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void DisableTaskButton_Click(object sender, RoutedEventArgs e)
+    private async void DisableTaskButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -121,11 +119,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 LocaleService.T("disableTaskConfirm", task.Name), "NetFence",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
-            Task.Run(() =>
-            {
-                try { ServiceScanner.DisableScheduledTask(task.Path, task.Name); }
-                catch { }
-            });
+            await Task.Run(() => ServiceScanner.DisableScheduledTask(task.Path, task.Name));
             System.Windows.MessageBox.Show(LocaleService.T("taskDisabled"), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -135,7 +129,7 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void BlockTaskExeButton_Click(object sender, RoutedEventArgs e)
+    private async void BlockTaskExeButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -147,11 +141,9 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 return;
             }
             var exePath = task.ExecutablePath;
-            Task.Run(() =>
-            {
-                try { FirewallService.Block(exePath, System.IO.Path.GetFileNameWithoutExtension(exePath),
-                    false, Array.Empty<string>()); } catch { }
-            });
+            await Task.Run(() => FirewallService.Block(exePath,
+                System.IO.Path.GetFileNameWithoutExtension(exePath),
+                false, Array.Empty<string>()));
             System.Windows.MessageBox.Show(LocaleService.T("blockedExe", exePath), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }

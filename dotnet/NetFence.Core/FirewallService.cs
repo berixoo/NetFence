@@ -138,7 +138,7 @@ public static class FirewallService
 
         foreach (var group in targets.GroupBy(target => target.ProfileName, StringComparer.OrdinalIgnoreCase))
         {
-            var targetSetName = "$targetPrograms" + Math.Abs(StringComparer.OrdinalIgnoreCase.GetHashCode(group.Key));
+            var targetSetName = "$targetPrograms" + (StringComparer.OrdinalIgnoreCase.GetHashCode(group.Key) & 0x7FFFFFFF);
             scriptLines.Add(string.Join(Environment.NewLine,
                 $"{targetSetName} = @{{}}",
                 string.Join(Environment.NewLine, group.Select(target => $"{targetSetName}[{PowerShellRunner.Quote(target.Program)}] = $true")),

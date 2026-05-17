@@ -71,6 +71,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
+            var selectedIndex = NavList.SelectedIndex;
             for (int i = 0; i < NavList.Items.Count; i++)
             {
                 if (NavList.Items[i] is NavItem item)
@@ -87,6 +88,7 @@ public partial class MainWindow : Window
                     NavList.Items[i] = new NavItem(item.Key, newLabel);
                 }
             }
+            NavList.SelectedIndex = selectedIndex;
             AdminText.Text = LocaleService.T("adminEnabled");
         });
     }

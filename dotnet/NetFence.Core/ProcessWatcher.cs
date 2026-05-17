@@ -10,29 +10,35 @@ public sealed class WatcherEventArgs : EventArgs
 
 public static class ProcessWatcher
 {
+    private static readonly object _lock = new();
     private static ManagementEventWatcher? _watcher;
-    public static bool IsRunning => _watcher is not null;
+    public static bool IsRunning { get { lock (_lock) return _watcher is not null; } }
 
     public static event EventHandler<WatcherEventArgs>? ProcessStarted;
 
     public static void Start()
     {
-        if (_watcher is not null) return;
+        lock (_lock)
+        {
+            if (_watcher is not null) return;
 
-        var query = new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace");
-        _watcher = new ManagementEventWatcher(query);
-        _watcher.EventArrived += OnEventArrived;
-        _watcher.Start();
+            var query = new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace");
+            _watcher = new ManagementEventWatcher(query);
+            _watcher.EventArrived += OnEventArrived;
+            _watcher.Start();
+        }
     }
 
     public static void Stop()
     {
-        if (_watcher is null) return;
-        _watcher.Stop();
-        _watcher.EventArrived -= OnEventArrived;
-        _watcher.Dispose();
-        _watcher = null;
-        ProcessStarted = null;
+        lock (_lock)
+        {
+            if (_watcher is null) return;
+            _watcher.Stop();
+            _watcher.EventArrived -= OnEventArrived;
+            _watcher.Dispose();
+            _watcher = null;
+        }
     }
 
     private static void OnEventArrived(object sender, EventArrivedEventArgs e)
