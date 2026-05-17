@@ -5,7 +5,7 @@ public static class FirewallService
     public static IReadOnlyList<FirewallRuleInfo> GetStatus()
     {
         var script = """
-            $ErrorActionPreference = 'Stop'
+            $ErrorActionPreference = 'Continue'
             Get-NetFirewallRule -ErrorAction SilentlyContinue |
                 Where-Object { $_.Group -like 'NetFence:*' } |
                 Sort-Object Group, DisplayName |
@@ -98,7 +98,7 @@ public static class FirewallService
         var script = string.Join(Environment.NewLine,
             "$ErrorActionPreference = 'Stop'",
             $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
-            "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule }",
+            "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }",
             "$rules.Count");
 
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
@@ -142,7 +142,7 @@ public static class FirewallService
                 "foreach ($rule in $rules) {",
                 "    $app = $rule | Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue",
                 $"    if ({targetSetName}.ContainsKey([string]$app.Program)) {{",
-                "        $rule | Remove-NetFirewallRule",
+                "        $rule | Remove-NetFirewallRule -ErrorAction SilentlyContinue",
                 "        $removed += 1",
                 "    }",
                 "}"));
@@ -164,7 +164,7 @@ public static class FirewallService
         var script = """
             $ErrorActionPreference = 'Stop'
             $rules = @(Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Group -like 'NetFence:*' })
-            if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule }
+            if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }
             $rules.Count
             """;
 

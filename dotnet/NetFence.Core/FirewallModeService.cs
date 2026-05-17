@@ -33,7 +33,7 @@ public static class FirewallModeService
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine,
             "$ErrorActionPreference = 'Stop'",
             $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
-            "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule }"));
+            "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
 
         if (mode == NetworkMode.AllowAll) return;
 
