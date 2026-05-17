@@ -36,13 +36,14 @@
 }
 ```
 
-custom 模式：
+custom 模式（仅 IP/CIDR，不支持域名）：
 ```json
 {
   "mode": "custom",
-  "allowedIps": ["192.168.1.100", "10.0.0.0/8"],
-  "allowedDomains": ["api.example.com"]
+  "allowedIps": ["192.168.1.100", "10.0.0.0/8"]
 }
+```
+> ⚠️ Custom 模式受 Windows 防火墙 Block > Allow 限制，当前实现仅创建出站 Allow 规则 + 入站 Block。出站非允许 IP 的流量可能仍可达。详见 README 限制说明。
 ```
 
 ## 新增/修改文件

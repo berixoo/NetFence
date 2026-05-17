@@ -102,7 +102,7 @@ public partial class App : System.Windows.Application
     private void CreateTrayIcon()
     {
         var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NetFence.exe");
-        System.Drawing.Icon icon;
+        System.Drawing.Icon? icon;
         try { icon = System.Drawing.Icon.ExtractAssociatedIcon(iconPath); _ownsTrayIcon = true; }
         catch { icon = System.Drawing.SystemIcons.Application; _ownsTrayIcon = false; }
 
