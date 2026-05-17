@@ -10,3 +10,4 @@ dist/
 dotnet/**/bin/
 dotnet/**/obj/
 .superpowers/
+.claude/

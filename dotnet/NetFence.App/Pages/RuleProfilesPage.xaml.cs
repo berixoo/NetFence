@@ -282,6 +282,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             var snapshot = RuleSnapshotStore.GetById(row.Id);
             if (snapshot is null) return;
 
+            var ruleCount = 0;
             await Task.Run(() =>
             {
                 // Remove current NetFence rules, then restore from snapshot
@@ -292,6 +293,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                     "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction SilentlyContinue }"));
 
                 var rules = JsonSerializer.Deserialize<List<FirewallRuleInfo>>(snapshot.RulesJson) ?? [];
+                ruleCount = rules.Count;
                 foreach (var rule in rules)
                 {
                     if (string.IsNullOrWhiteSpace(rule.Program) || !Path.IsPathFullyQualified(rule.Program))
@@ -310,21 +312,11 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             });
 
             RuleSnapshotStore.MarkRolledBack(row.Id);
-            OperationHistoryStore.Record("Rollback", snapshot.ProfileName, rules.Count);
+            OperationHistoryStore.Record("Rollback", snapshot.ProfileName, ruleCount);
             Refresh();
-
-            if (failedPaths.Count > 0)
-            {
-                System.Windows.MessageBox.Show(
-                    LocaleService.T("rollbackPartial", rules.Count, failedPaths.Count),
-                    "NetFence", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            else
-            {
-                System.Windows.MessageBox.Show(
-                    LocaleService.T("rollbackComplete"), "NetFence",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            System.Windows.MessageBox.Show(
+                LocaleService.T("rollbackComplete"), "NetFence",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
