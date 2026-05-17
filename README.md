@@ -20,7 +20,22 @@
 
 **中文** | [English](#english)
 
-NetFence 是一个 Windows 桌面工具，通过 Windows Defender 防火墙规则来阻止特定程序联网。规则是**持久化**的——关闭 NetFence 后仍然生效，重启电脑后也会继续生效。
+## 简介
+
+NetFence 是一个 Windows 桌面工具，通过调用系统内置的 Windows Defender 防火墙来实现程序联网控制。你可以选择单个 `.exe` 或整个文件夹，一键创建**持久化**的出站+入站阻断规则。规则写入系统防火墙后，即使关闭 NetFence、重启电脑也依然生效。需要恢复联网时，使用「解除禁止」删除对应规则即可。
+
+**核心特点：**
+
+- 不修改系统文件、不安装驱动，纯 Windows 防火墙规则
+- 支持关联进程扫描（子进程、同目录程序）
+- 实时 TCP/UDP 网络连接监控
+- Windows 服务与计划任务关联扫描
+- 规则档案 JSON 导入/导出，支持快照回滚
+- 四种联网模式：禁止全部 / 允许全部 / 仅局域网 / 指定 IP
+- 托盘常驻、后台进程守护、开机自启
+- 完整卸载（清理规则、配置、程序文件）
+
+> NetFence is a Windows desktop tool that uses the built-in Windows Defender Firewall to block specific programs from accessing the internet. Rules are **persistent** — they survive closing NetFence and rebooting your PC. Select an `.exe` or folder, scan for related processes, and block with one click. Unblock to restore networking.
 
 ---
 
@@ -185,7 +200,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-release.ps
 
 ## English
 
-NetFence is a Windows desktop tool that blocks specific applications from accessing the internet using persistent Windows Defender Firewall rules. Rules survive closing NetFence and rebooting your PC.
+## Overview
+
+NetFence is a Windows desktop tool that uses the built-in Windows Defender Firewall to block specific applications from accessing the internet. Rules are **persistent** — they survive closing NetFence and rebooting your PC. Select an `.exe` or folder, scan for related processes, and block with one click. Unblock to restore networking.
+
+**Key features:** no drivers or system modifications — pure Windows Firewall rules. Related process scanning finds child processes automatically. Real-time TCP/UDP connection monitor, Windows service & scheduled task scanning, JSON rule profile import/export with snapshot rollback, four network modes, system tray with background process guardian, and full uninstall support.
 
 ### Features
 
