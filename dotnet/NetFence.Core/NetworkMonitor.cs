@@ -38,7 +38,7 @@ public static class NetworkMonitor
 
     public static HashSet<string> GetNetFenceBlockedPrograms()
     {
-        if (_cachedBlockedPrograms is not null && (DateTime.Now - _blockedCacheTime) < BlockedCacheTtl)
+        if (_cachedBlockedPrograms is not null && (DateTime.UtcNow - _blockedCacheTime) < BlockedCacheTtl)
             return _cachedBlockedPrograms;
 
         var programs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -56,7 +56,7 @@ public static class NetworkMonitor
         catch { }
 
         _cachedBlockedPrograms = programs;
-        _blockedCacheTime = DateTime.Now;
+        _blockedCacheTime = DateTime.UtcNow;
         return programs;
     }
 
