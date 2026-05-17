@@ -102,7 +102,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void LoadProfileButton_Click(object sender, RoutedEventArgs e)
+    private async void LoadProfileButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -146,8 +146,9 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
             targets.AddRange(profile.Programs.Where(File.Exists));
 
             var mode = FirewallModeService.KeyToMode(profile.Mode);
-            FirewallModeService.ApplyMode(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
-                mode, profile.AllowedIps, profile.AllowedDomains);
+            await Task.Run(() =>
+                FirewallModeService.ApplyMode(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
+                    mode, profile.AllowedIps, profile.AllowedDomains));
             System.Windows.MessageBox.Show(
                 LocaleService.T("profileLoaded"), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -321,7 +322,7 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void ApplyModeButton_Click(object sender, RoutedEventArgs e)
+    private async void ApplyModeButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -349,8 +350,9 @@ public partial class RuleProfilesPage : System.Windows.Controls.UserControl
                 return;
             }
 
-            FirewallModeService.ApplyMode(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
-                mode, ips, Array.Empty<string>());
+            await Task.Run(() =>
+                FirewallModeService.ApplyMode(profile.Name, targets.Distinct(StringComparer.OrdinalIgnoreCase),
+                    mode, ips, Array.Empty<string>()));
             System.Windows.MessageBox.Show(
                 LocaleService.T("modeApplied", modeKey), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);

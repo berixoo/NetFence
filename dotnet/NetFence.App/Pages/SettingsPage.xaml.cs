@@ -94,12 +94,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     {
         if (_isInitializing) return;
         var enabled = GuardianToggle.IsChecked == true;
-        try
-        {
-            if (enabled) { ProcessWatcher.Start(); }
-            else ProcessWatcher.Stop();
-            WatcherToggled?.Invoke(enabled);
-        }
+        try { WatcherToggled?.Invoke(enabled); }
         catch { GuardianToggle.IsChecked = !enabled; }
     }
 

@@ -82,10 +82,9 @@ public static class FirewallService
             }
         }
 
-        var preRules = GetStatus();
-        RuleSnapshotStore.Create(profileName, "Block", preRules);
-
         PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines));
+        var postRules = GetStatus();
+        RuleSnapshotStore.Create(profileName, "Block", postRules);
         OperationLog.Write(OperationLog.DefaultPath, "Block", $"Blocked profile '{profileName}' for {targets.Count} executable file(s).", targets);
         OperationHistoryStore.Record("Block", profileName, targets.Count);
         NetworkMonitor.InvalidateBlockedCache();
@@ -101,9 +100,6 @@ public static class FirewallService
             $"$rules = @(Get-NetFirewallRule -Group {PowerShellRunner.Quote(group)} -ErrorAction SilentlyContinue)",
             "if ($rules.Count -gt 0) { $rules | Remove-NetFirewallRule }",
             "$rules.Count");
-
-        var preRules = GetStatus();
-        RuleSnapshotStore.Create(profileName, "Unblock", preRules);
 
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
         OperationLog.Write(OperationLog.DefaultPath, "Unblock", $"Removed {removed} rule(s) for profile '{profileName}'.", []);
@@ -154,10 +150,9 @@ public static class FirewallService
 
         scriptLines.Add("$removed");
 
-        var preRules = GetStatus();
-        RuleSnapshotStore.Create("selected", "UnblockSelected", preRules);
-
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(string.Join(Environment.NewLine, scriptLines)));
+        var postRules = GetStatus();
+        RuleSnapshotStore.Create("selected", "UnblockSelected", postRules);
         OperationLog.Write(OperationLog.DefaultPath, "UnblockSelected", $"Removed {removed} rule(s) for {targets.Count} selected executable file(s).", targets.Select(target => target.Program));
         OperationHistoryStore.Record("UnblockSelected", "selected", targets.Count);
         NetworkMonitor.InvalidateBlockedCache();
@@ -173,10 +168,9 @@ public static class FirewallService
             $rules.Count
             """;
 
-        var preRules = GetStatus();
-        RuleSnapshotStore.Create("all", "UnblockAll", preRules);
-
         var removed = ParseSingleInt(PowerShellRunner.RunRequired(script));
+        var postRules = GetStatus();
+        RuleSnapshotStore.Create("all", "UnblockAll", postRules);
         OperationLog.Write(OperationLog.DefaultPath, "UnblockAll", $"Removed {removed} NetFence rule(s).", []);
         OperationHistoryStore.Record("UnblockAll", "all", removed);
         NetworkMonitor.InvalidateBlockedCache();
