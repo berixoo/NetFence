@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using Microsoft.Win32;
 using NetFence.Core;
@@ -147,17 +148,17 @@ public partial class App : System.Windows.Application
         ProcessWatcher.Start();
     }
 
-    private static DateTime _lastWatcherEvent = DateTime.MinValue;
-    private static readonly TimeSpan WatcherThrottle = TimeSpan.FromSeconds(1);
+    private static long _lastWatcherTicks;
+    private static readonly long WatcherThrottleTicks = TimeSpan.FromSeconds(1).Ticks;
 
     private void OnProcessStarted(object? sender, WatcherEventArgs e)
     {
-        // Rate limit to prevent thread pool saturation
-        var now = DateTime.UtcNow;
-        if (now - _lastWatcherEvent < WatcherThrottle) return;
-        _lastWatcherEvent = now;
+        var now = DateTime.UtcNow.Ticks;
+        var prev = Interlocked.Read(ref _lastWatcherTicks);
+        if (now - prev < WatcherThrottleTicks) return;
+        if (Interlocked.Exchange(ref _lastWatcherTicks, now) != prev) return;
 
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             try
             {
@@ -184,7 +185,7 @@ public partial class App : System.Windows.Application
 
                 if (childExe is null || blockedSet.Contains(childExe)) return;
 
-                FirewallService.Block(childExe, "auto", false, Array.Empty<string>());
+                await FirewallService.BlockAsync(childExe, "auto", false, Array.Empty<string>());
                 Dispatcher.Invoke(() =>
                     _trayIcon?.ShowBalloonTip(3000, "NetFence",
                         LocaleService.T("trayAutoBlocked", Path.GetFileName(childExe)),
@@ -262,7 +263,7 @@ public partial class App : System.Windows.Application
         SetAutoStart(false);
 
         // Remove all NetFence firewall rules before cleanup
-        try { FirewallService.UnblockAll(); }
+        try { FirewallService.UnblockAllAsync().GetAwaiter().GetResult(); }
         catch { }
 
         var appDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -300,6 +301,7 @@ public partial class App : System.Windows.Application
     private void ExitApplication()
     {
         _isExiting = true;
+        ProcessWatcher.ProcessStarted -= OnProcessStarted;
         ProcessWatcher.Stop();
         if (_trayIcon is not null)
         {

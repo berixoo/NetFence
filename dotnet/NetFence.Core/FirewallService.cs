@@ -280,12 +280,18 @@ public static class FirewallService
         }
 
         script.Add("[PSCustomObject]@{ SuccessCount = $success; FailureCount = $failure } | ConvertTo-Csv -NoTypeInformation");
-        var output = await PowerShellRunner.RunRequiredAsync(string.Join(Environment.NewLine, script), WriteTimeout, cancel);
-        var rows = LiveSystemInfo.ParseCsv(output);
+        var result = await PowerShellRunner.RunAsync(string.Join(Environment.NewLine, script), WriteTimeout, cancel);
+        if (result.ExitCode != 0)
+        {
+            var err = string.IsNullOrWhiteSpace(result.StandardError) ? result.StandardOutput : result.StandardError;
+            throw new InvalidOperationException(err.Trim());
+        }
+        var rows = LiveSystemInfo.ParseCsv(result.StandardOutput);
         var sc = int.TryParse(rows.FirstOrDefault()?.GetValueOrDefault("SuccessCount"), out var s) ? s : 0;
         var fc = int.TryParse(rows.FirstOrDefault()?.GetValueOrDefault("FailureCount"), out var f) ? f : 0;
+        var failedTargets = ParseFailureLines(result.StandardError);
 
-        return new FirewallOperationResult(profileName, sc, fc, new List<string>());
+        return new FirewallOperationResult(profileName, sc, fc, failedTargets);
     }
 
     private static FirewallOperationResult ApplyBatchBlockRulesSync(
@@ -315,11 +321,35 @@ public static class FirewallService
             }
         }
         sl.Add("[PSCustomObject]@{ SuccessCount = $success; FailureCount = $failure } | ConvertTo-Csv -NoTypeInformation");
-        var output = PowerShellRunner.RunRequired(string.Join(Environment.NewLine, sl));
+        var rawResult = PowerShellRunner.Run(string.Join(Environment.NewLine, sl));
+        var output = rawResult.StandardOutput;
+        if (rawResult.TimedOut) throw new TimeoutException("PowerShell command timed out.");
+        if (rawResult.Canceled) throw new OperationCanceledException("PowerShell command was canceled.");
+        if (rawResult.ExitCode != 0)
+        {
+            var msg = string.IsNullOrWhiteSpace(rawResult.StandardError)
+                ? rawResult.StandardOutput : rawResult.StandardError;
+            throw new InvalidOperationException(msg.Trim());
+        }
         var rows = LiveSystemInfo.ParseCsv(output);
         var sc = int.TryParse(rows.FirstOrDefault()?.GetValueOrDefault("SuccessCount"), out var s2) ? s2 : 0;
         var fc = int.TryParse(rows.FirstOrDefault()?.GetValueOrDefault("FailureCount"), out var f2) ? f2 : 0;
-        return new FirewallOperationResult(pn, sc, fc, new List<string>());
+        var failedTargets = ParseFailureLines(rawResult.StandardError);
+        return new FirewallOperationResult(pn, sc, fc, failedTargets);
+    }
+
+    private static List<string> ParseFailureLines(string standardError)
+    {
+        var list = new List<string>();
+        if (string.IsNullOrWhiteSpace(standardError)) return list;
+        foreach (var line in standardError.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var prefix = "FAIL|";
+            var idx = line.IndexOf(prefix, StringComparison.Ordinal);
+            if (idx >= 0)
+                list.Add(line[(idx + prefix.Length)..].Trim());
+        }
+        return list;
     }
 
     private static int ParseSingleInt(string output)

@@ -141,9 +141,9 @@ public partial class ServicesTasksPage : System.Windows.Controls.UserControl
                 return;
             }
             var exePath = task.ExecutablePath;
-            await Task.Run(() => FirewallService.Block(exePath,
+            await FirewallService.BlockAsync(exePath,
                 System.IO.Path.GetFileNameWithoutExtension(exePath),
-                false, Array.Empty<string>()));
+                false, Array.Empty<string>());
             System.Windows.MessageBox.Show(LocaleService.T("blockedExe", exePath), "NetFence",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
